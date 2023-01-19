@@ -9,18 +9,18 @@ pub struct CarHeaderV1 {
 }
 
 impl CarHeaderV1 {
-    pub fn new(roots: Vec<Cid>, version: u64) -> Self {
-        Self { roots, version }
+    pub fn new(roots: Vec<Cid>) -> Self {
+        Self {
+            roots,
+            version: 1,
+        }
     }
 }
 
 impl From<Vec<Cid>> for CarHeaderV1 {
 
     fn from(roots: Vec<Cid>) -> Self {
-        CarHeaderV1 {
-            roots,
-            version: 1,
-        }
+        Self::new(roots)
     }
 }
 
@@ -37,7 +37,7 @@ mod test {
         let digest = Blake2b256.digest(b"test");
         let cid = Cid::new_v1(DagCborCodec.into(), digest);
         let mut bytes = Vec::new();
-        let header = CarHeaderV1::from(vec![cid]);
+        let header = CarHeaderV1::new(vec![cid]);
         header.encode(DagCborCodec, &mut bytes).unwrap();
         assert_eq!(
             CarHeaderV1::decode(DagCborCodec, &mut std::io::Cursor::new(&bytes)).unwrap(),
