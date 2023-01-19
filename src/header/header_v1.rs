@@ -36,7 +36,13 @@ mod test {
     fn test_head_v1() {
         let digest = Blake2b256.digest(b"test");
         let cid = Cid::new_v1(DagCborCodec.into(), digest);
-        
+        let mut bytes = Vec::new();
+        let header = CarHeaderV1::from(vec![cid]);
+        header.encode(DagCborCodec, &mut bytes).unwrap();
+        assert_eq!(
+            CarHeaderV1::decode(DagCborCodec, &mut std::io::Cursor::new(&bytes)).unwrap(),
+            header
+        );
     }
 
 }
