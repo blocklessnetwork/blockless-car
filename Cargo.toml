@@ -10,5 +10,6 @@ ipld = { version = "0.15.0", package = "libipld"}
 ipld-cbor = {version = "0.15.0", package = "libipld-cbor"}
 thiserror = "1.0.38"
 cid = "0.9"
+integer-encoding = "3.0.4"
 
 
