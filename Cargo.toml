@@ -6,5 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-libipld = { version = "0.15.0"}
+ipld = { version = "0.15.0", package = "libipld"}
+ipld-cbor = {version = "0.15.0", package = "libipld-cbor"}
 thiserror = "1.0.38"
+cid = "0.9"
+
+
