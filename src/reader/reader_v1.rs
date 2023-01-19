@@ -53,3 +53,13 @@ where
         self.read_node()
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    
+    #[test]
+    fn test_read() {
+        
+    }
+}
