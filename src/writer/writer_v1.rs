@@ -45,4 +45,9 @@ where
         self.inner.write_all(&data)?;
         Ok(())
     }
+
+    fn flush(&mut self) -> Result<(), CarError> {
+        self.inner.flush()?;
+        Ok(())
+    }
 }
