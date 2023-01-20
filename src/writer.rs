@@ -7,5 +7,5 @@ mod writer_v1;
 trait CarWriter {
     fn write<T>(&mut self, cid: Cid, data: T) -> Result<(), CarError>
     where
-        T: AsRef<u8>;
+        T: AsRef<[u8]>;
 }

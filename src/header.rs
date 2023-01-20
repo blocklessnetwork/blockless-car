@@ -45,4 +45,15 @@ impl CarHeader {
         }
         Ok(CarHeader::V1(header))
     }
+
+    pub fn encode(&self) -> Result<Vec<u8>, CarError> {
+        match self {
+            CarHeader::V1(ref v1) => {
+                let data = DagCborCodec.encode(v1)
+                    .map_err(|e| CarError::Parsing(e.to_string()))?;
+                Ok(data)
+            }
+            CarHeader::V2() => todo!(),
+        }
+    }
 }
