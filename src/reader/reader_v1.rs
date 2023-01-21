@@ -54,29 +54,23 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    
+
+   
     #[test]
     fn test_read() {
         let file = std::path::Path::new("test");
         let file = file.join("carv1-basic.car");
         let file = std::fs::File::open(file).unwrap();
         let mut reader = CarReaderV1::new(file).unwrap();
-        let (cid_d, data) = match reader.read_next_section().unwrap() {
+        let section = match reader.read_next_section().unwrap() {
             Some(d) => d,
             None => {
                 assert!(false, "should not be None");
                 return;
             },
         };
-        assert!(data.len() > 0);
-        let header_v1 = match reader.header() {
-            &CarHeader::V1(ref v) => v,
-            &CarHeader::V2() => {
-                assert!(false, "should not be v2");
-                return;
-            }
-        };
-        assert!(cid_d.version() == cid::Version::V1);
-        assert!(header_v1.roots.len() == 2);
+        
+        assert!(section.1.len() > 0);
+        assert_eq!(section.0 , reader.header().roots()[0]);
     }
 }

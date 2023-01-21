@@ -4,7 +4,7 @@ use super::CarWriter;
 use integer_encoding::VarIntWriter;
 
 
-struct CarWriterV1<W> {
+pub(crate) struct CarWriterV1<W> {
     inner: W,
     header: CarHeader,
     is_header_written: bool,
@@ -49,5 +49,43 @@ where
     fn flush(&mut self) -> Result<(), CarError> {
         self.inner.flush()?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::io::Cursor;
+
+    use ipld_cbor::DagCborCodec;
+
+    use crate::header::{CarHeader, CarHeaderV1};
+    use crate::reader::{CarReaderV1, CarReader};
+
+    use super::*;
+    use cid::Cid;
+    use cid::multihash::{MultihashDigest, Code::Blake2b256};
+
+
+
+    #[test]
+    fn test_writer_read_v1() {
+        let digest_test = Blake2b256.digest(b"test");
+        let cid_test = Cid::new_v1(DagCborCodec.into(), digest_test);
+
+        let digest_foo = Blake2b256.digest(b"foo");
+        let cid_foo = Cid::new_v1(DagCborCodec.into(), digest_foo);
+
+        let header = CarHeader::V1(CarHeaderV1::new(vec![cid_foo]));
+
+        let mut buffer = Vec::new();
+        let mut writer = CarWriterV1::new(&mut buffer, header);
+        writer.write(cid_test, b"test").unwrap();
+        writer.write(cid_foo, b"foo").unwrap();
+        writer.flush().unwrap();
+        let reader = Cursor::new(&buffer);
+        let mut car_reader = CarReaderV1::new(reader).unwrap();
+        assert_eq!(car_reader.header().roots(), car_reader.header().roots());
+        let sec1 = car_reader.read_next_section().unwrap().unwrap();
+        assert_eq!(sec1.0, cid_test);
     }
 }
