@@ -11,5 +11,4 @@ pub trait CarWriter {
         T: AsRef<[u8]>;
 
     fn flush(&mut self) -> Result<(), CarError>;
-    
 }

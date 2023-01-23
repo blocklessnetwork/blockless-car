@@ -9,10 +9,10 @@ pub enum CarError {
 
     #[error("invalid file error: {0}")]
     InvalidFile(String),
-    
+
     #[error("Io error: {0}")]
     IO(#[from] std::io::Error),
-    
+
     #[error("too large section error: {0}")]
     TooLargeSection(usize),
 }

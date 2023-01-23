@@ -1,9 +1,8 @@
 mod error;
 mod header;
-mod writer;
 mod reader;
+mod writer;
 
-pub(crate) use writer::{CarWriterV1, CarWriter};
-pub(crate) use reader::{CarReaderV1, CarReader};
 pub use header::CarHeader;
-
+pub(crate) use reader::{CarReader, CarReaderV1};
+pub(crate) use writer::{CarWriter, CarWriterV1};

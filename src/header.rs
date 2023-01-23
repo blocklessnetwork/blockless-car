@@ -1,4 +1,3 @@
-
 mod header_v1;
 pub(crate) use header_v1::CarHeaderV1;
 
@@ -21,16 +20,14 @@ impl CarHeader {
 
     pub fn roots(&self) -> &[Cid] {
         match self {
-            &CarHeader::V1(ref v1) => {
-                &v1.roots
-            }
+            &CarHeader::V1(ref v1) => &v1.roots,
             &CarHeader::V2() => todo!(),
         }
     }
 
     pub fn read_header<R>(r: R) -> Result<CarHeader, CarError>
     where
-        R: std::io::Read
+        R: std::io::Read,
     {
         let data = match ld_read(r) {
             Ok(Some(d)) => d,
@@ -59,7 +56,8 @@ impl CarHeader {
     pub fn encode(&self) -> Result<Vec<u8>, CarError> {
         match self {
             &CarHeader::V1(ref v1) => {
-                let data = DagCborCodec.encode(v1)
+                let data = DagCborCodec
+                    .encode(v1)
                     .map_err(|e| CarError::Parsing(e.to_string()))?;
                 Ok(data)
             }
