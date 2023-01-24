@@ -18,6 +18,7 @@ where
         let head = self.header.encode()?;
         self.inner.write_varint(head.len())?;
         self.inner.write_all(&head)?;
+        self.is_header_written = true;
         Ok(())
     }
 
@@ -41,15 +42,15 @@ where
         if !self.is_header_written {
             self.write_header()?;
         }
-        let mut cid_buff = Vec::new();
+        let mut cid_buff: Vec<u8> = Vec::new();
         cid_data
             .write_bytes(&mut cid_buff)
             .map_err(|e| CarError::Parsing(e.to_string()))?;
         let data = data.as_ref();
         let sec_len = data.len() + cid_buff.len();
         self.inner.write_varint(sec_len)?;
-        self.inner.write_all(&cid_buff)?;
-        self.inner.write_all(&data)?;
+        self.inner.write_all(&cid_buff[..])?;
+        self.inner.write_all(data)?;
         Ok(())
     }
 
@@ -84,8 +85,8 @@ mod test {
         writer.write(cid_test1, b"test1").unwrap();
         writer.write(cid_test2, b"test2").unwrap();
         writer.flush().unwrap();
-        let reader = Cursor::new(&buffer);
-        let mut car_reader = CarReaderV1::new(reader).unwrap();
+        let mut reader = Cursor::new(&buffer);
+        let mut car_reader = CarReaderV1::new(&mut reader).unwrap();
         assert_eq!(car_reader.header().roots(), car_reader.header().roots());
         let sec1 = car_reader.read_next_section().unwrap().unwrap();
         let sec2 = car_reader.read_next_section().unwrap().unwrap();
