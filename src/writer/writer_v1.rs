@@ -86,13 +86,8 @@ mod test {
         writer.write(cid_test2, b"test2").unwrap();
         writer.flush().unwrap();
         let mut reader = Cursor::new(&buffer);
-        let mut car_reader = CarReaderV1::new(&mut reader).unwrap();
-        assert_eq!(car_reader.header().roots(), car_reader.header().roots());
-        let sec1 = car_reader.read_next_section().unwrap().unwrap();
-        let sec2 = car_reader.read_next_section().unwrap().unwrap();
-        let sec3 = car_reader.read_next_section().unwrap();
-        assert_eq!(sec1.0, cid_test1);
-        assert_eq!(sec2.0, cid_test2);
-        assert_eq!(sec3, None);
+        let car_reader = CarReaderV1::new(&mut reader).unwrap();
+        assert_eq!(vec![cid_test2], car_reader.header().roots());
+        assert_eq!(car_reader.sections().len(), 2);
     }
 }
