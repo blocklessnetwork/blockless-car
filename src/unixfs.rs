@@ -1,3 +1,5 @@
+use cid::Cid;
+
 use crate::pb::{unixfs::{mod_Data::DataType, Data}, self};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -62,4 +64,24 @@ impl<'a> From<Data<'a>> for UnixFs {
             mtime: value.mtime.map(|t| t.into()),
         }
     }
+}
+
+pub struct IpldUnixFs {
+    cid: Cid,
+    unix_fs: UnixFs,
+    name: String,
+    children: Vec<IpldUnixFs>,
+}
+
+impl IpldUnixFs {
+
+    pub fn new(cid: Cid, name: String, unix_fs: UnixFs) -> Self {
+        Self {
+            cid,
+            name,
+            unix_fs,
+            children: Vec::new()
+        }
+    }
+    
 }
