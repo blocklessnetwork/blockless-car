@@ -1,5 +1,5 @@
+#![allow(unused)]
 use crate::{error::CarError, header::CarHeader};
-
 use super::CarWriter;
 use integer_encoding::VarIntWriter;
 

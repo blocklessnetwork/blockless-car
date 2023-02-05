@@ -1,5 +1,5 @@
+#![allow(unused)]
 use cid::Cid;
-use ipld::Block;
 
 use crate::{error::CarError, header::CarHeader, reader::CarReader, section::Section, Ipld};
 use std::{io::{Read, Seek}, collections::HashMap};
