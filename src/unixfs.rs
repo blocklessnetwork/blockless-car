@@ -12,6 +12,12 @@ pub enum FileType {
     HAMTShard = 5,
 }
 
+impl Default for FileType {
+    fn default() -> Self {
+        FileType::Raw
+    }
+}
+
 impl From<DataType> for FileType {
     fn from(value: DataType) -> Self {
         match value {
@@ -41,20 +47,23 @@ impl From<pb::unixfs::UnixTime> for UnixTime {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct UnixFs {
-    pub file_type: FileType,
-    pub file_size: Option<u64>,
-    pub block_sizes: Vec<u64>,
-    pub hash_type: Option<u64>,
-    pub fanout: Option<u64>,
-    pub mode: Option<u32>,
-    pub mtime: Option<UnixTime>,
+    cid: Option<Cid>,
+    file_type: FileType,
+    file_size: Option<u64>,
+    block_sizes: Vec<u64>,
+    hash_type: Option<u64>,
+    fanout: Option<u64>,
+    mode: Option<u32>,
+    mtime: Option<UnixTime>,
+    children: Option<Vec<UnixFs>>
 }
 
 impl<'a> From<Data<'a>> for UnixFs {
     fn from(value: Data<'a>) -> Self {
         Self {
+            cid: None,
             file_type: value.Type.into(),
             file_size: value.filesize,
             block_sizes: value.blocksizes,
@@ -62,26 +71,16 @@ impl<'a> From<Data<'a>> for UnixFs {
             fanout: value.fanout,
             mode: value.mode,
             mtime: value.mtime.map(|t| t.into()),
+            children: None,
         }
     }
 }
 
-pub struct IpldUnixFs {
-    cid: Cid,
-    unix_fs: UnixFs,
-    name: String,
-    children: Vec<IpldUnixFs>,
-}
-
-impl IpldUnixFs {
-
-    pub fn new(cid: Cid, name: String, unix_fs: UnixFs) -> Self {
+impl UnixFs {
+    pub fn new(cid: Cid) -> Self {
         Self {
-            cid,
-            name,
-            unix_fs,
-            children: Vec::new()
+            cid: Some(cid),
+            ..Default::default()
         }
     }
-    
 }
