@@ -6,7 +6,7 @@ use std::{io::{Read, Seek}, collections::HashMap};
 
 use super::read_section;
 
-pub struct CarReaderV1<R> {
+pub(crate) struct CarReaderV1<R> {
     inner: R,
     sections: HashMap<Cid, Section>,
     header: CarHeader,
@@ -16,7 +16,7 @@ impl<R> CarReaderV1<R>
 where
     R: Read + Seek,
 {
-    pub fn new(mut inner: R) -> Result<Self, CarError> {
+    pub(crate) fn new(mut inner: R) -> Result<Self, CarError> {
         let header = CarHeader::read_header(&mut inner)?;
         let mut sections = HashMap::new();
         while let Some(section) = read_section(&mut inner)? {

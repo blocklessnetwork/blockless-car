@@ -42,7 +42,6 @@ impl Section {
         let data = self.read_data(&mut seeker)?;
         let block = Block::<ipld::DefaultParams>::new(self.cid, data).unwrap();
         block.ipld()
-            .map(|d| Ipld(d))
             .map_err(|e| CarError::Parsing(e.to_string()))
     }
     

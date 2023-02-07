@@ -1,7 +1,7 @@
 use cid::Cid;
 
 mod reader_v1;
-use crate::{error::CarError, header::CarHeader, section::Section, Ipld};
+use crate::{error::CarError, header::CarHeader, section::Section, Ipld, unixfs::UnixFs};
 use integer_encoding::VarIntReader;
 use std::io::{self, Seek, Read};
 pub use reader_v1::*;
@@ -67,6 +67,12 @@ pub trait CarReader {
     fn read_section_data(&mut self, cid: &Cid) -> Result<Vec<u8>, CarError>;
 
     fn ipld(&mut self, cid: &Cid) -> Result<Ipld, CarError>;
+
+    #[inline(always)]
+    fn unixfs(&mut self, cid: &Cid) -> Result<UnixFs, CarError> {
+        let fs_ipld = self.ipld(cid)?;
+        fs_ipld.try_into()
+    }
 
 }
 

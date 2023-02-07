@@ -6,7 +6,7 @@ use crate::{Decoder, error::CarError, pb::unixfs::Data, unixfs::UnixFs, Ipld};
 impl Decoder<UnixFs> for Ipld {
 
     fn decode(&self) -> Result<UnixFs, CarError> {
-        match self.0 {
+        match self {
             ipld::Ipld::Map(ref m) => {
                 let mut unix_fs: UnixFs = if let Some(ipld::Ipld::Bytes(data)) = m.get("Data") {
                     let mut reader = BytesReader::from_bytes(&data);
