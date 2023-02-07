@@ -6,7 +6,7 @@ use std::{io::{Read, Seek}, collections::HashMap};
 
 use super::read_section;
 
-pub(crate) struct CarReaderV1<R> {
+pub struct CarReaderV1<R> {
     inner: R,
     sections: HashMap<Cid, Section>,
     header: CarHeader,

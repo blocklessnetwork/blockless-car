@@ -3,7 +3,8 @@ use cid::Cid;
 mod reader_v1;
 use crate::{error::CarError, header::CarHeader, section::Section, Ipld};
 use integer_encoding::VarIntReader;
-use std::io;
+use std::io::{self, Seek, Read};
+pub use reader_v1::*;
 
 pub(crate) use reader_v1::CarReaderV1;
 
@@ -67,4 +68,12 @@ pub trait CarReader {
 
     fn ipld(&mut self, cid: &Cid) -> Result<Ipld, CarError>;
 
+}
+
+#[inline(always)]
+pub fn new_v1<R>(inner: R) -> Result<impl CarReader, CarError> 
+where
+    R: Read + Seek
+{
+    CarReaderV1::new(inner)
 }

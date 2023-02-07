@@ -1,19 +1,15 @@
-mod error;
-mod header;
-mod reader;
-mod writer;
-mod section;
-mod codec;
+pub mod error;
+pub mod header;
+pub mod reader;
+pub mod writer;
+pub mod section;
+pub mod codec;
 mod unixfs_codec;
-mod unixfs;
+pub mod unixfs;
 mod pb;
 
 pub use codec::{Decoder};
 pub use header::CarHeader;
-#[allow(unused)]
-pub(crate) use reader::{CarReader, CarReaderV1};
-#[allow(unused)]
-pub(crate) use writer::{CarWriter, CarWriterV1};
 
 pub enum IpldType {
     Null,
