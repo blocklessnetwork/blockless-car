@@ -49,21 +49,23 @@ impl From<pb::unixfs::UnixTime> for UnixTime {
 
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct UnixFs {
-    cid: Option<Cid>,
-    file_type: FileType,
-    file_size: Option<u64>,
-    block_sizes: Vec<u64>,
-    hash_type: Option<u64>,
-    fanout: Option<u64>,
-    mode: Option<u32>,
-    mtime: Option<UnixTime>,
-    children: Option<Vec<UnixFs>>
+    pub(crate) cid: Option<Cid>,
+    pub(crate) file_type: FileType,
+    pub(crate) file_size: Option<u64>,
+    pub(crate) block_sizes: Vec<u64>,
+    pub(crate) hash_type: Option<u64>,
+    pub(crate) name: Option<String>,
+    pub(crate) fanout: Option<u64>,
+    pub(crate) mode: Option<u32>,
+    pub(crate) mtime: Option<UnixTime>,
+    pub(crate) children: Vec<UnixFs>
 }
 
 impl<'a> From<Data<'a>> for UnixFs {
     fn from(value: Data<'a>) -> Self {
         Self {
             cid: None,
+            name: None,
             file_type: value.Type.into(),
             file_size: value.filesize,
             block_sizes: value.blocksizes,
@@ -71,7 +73,7 @@ impl<'a> From<Data<'a>> for UnixFs {
             fanout: value.fanout,
             mode: value.mode,
             mtime: value.mtime.map(|t| t.into()),
-            children: None,
+            children: Default::default(),
         }
     }
 }
@@ -82,5 +84,10 @@ impl UnixFs {
             cid: Some(cid),
             ..Default::default()
         }
+    }
+
+    #[inline(always)]
+    pub fn add_child(&mut self, child: UnixFs) {
+        self.children.push(child);
     }
 }

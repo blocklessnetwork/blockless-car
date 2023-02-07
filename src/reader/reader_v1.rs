@@ -66,12 +66,15 @@ mod test {
         let file = file.join("carv1-basic.car");
         let file = std::fs::File::open(file).unwrap();
         let mut reader = CarReaderV1::new(file).unwrap();
+        let roots = reader.header().roots();
         assert_eq!(reader.sections().len(), 6);
-        let sections = reader.sections();
-        for s in sections {
-            let s_ipld = reader.ipld(&s.cid()).unwrap();
+        for r in roots.iter() {
+            let s_ipld = reader.ipld(r).unwrap();
             let unix_fs: Result<UnixFs, CarError> = s_ipld.try_into();
-            println!("{unix_fs:?}");
+            assert!(unix_fs.is_ok());
+            unix_fs.map(|fs| {
+                assert_eq!(fs.children.len(), 3);
+            });
         }
     }
 }

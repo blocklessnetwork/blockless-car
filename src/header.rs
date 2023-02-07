@@ -20,9 +20,9 @@ impl CarHeader {
         CarHeader::V1(CarHeaderV1::new(roots))
     }
 
-    pub fn roots(&self) -> &[Cid] {
+    pub fn roots(&self) -> Vec<Cid> {
         match self {
-            &CarHeader::V1(ref v1) => &v1.roots,
+            &CarHeader::V1(ref v1) => v1.roots.clone(),
             &CarHeader::V2() => todo!(),
         }
     }
