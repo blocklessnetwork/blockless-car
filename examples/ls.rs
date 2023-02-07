@@ -4,7 +4,8 @@ use rust_car::error::CarError;
 
 
 fn walk(node: &UnixFs) {
-    let file_n = node.name();
+    let cid = node.cid().map(String::from);
+    let file_n = node.name().or(cid.as_ref().map(String::as_str));
     let file_s = node.file_size();
     let file_type = node.file_type();
 
@@ -24,7 +25,8 @@ fn main() {
     for r in roots.iter() {
         let s_ipld = reader.ipld(r).unwrap();
         let unix_fs: Result<UnixFs, CarError> = s_ipld.try_into();
-        let unix_fs = unix_fs.unwrap();
+        let mut unix_fs = unix_fs.unwrap();
+        unix_fs.set_name(Some((*r).into()));
         walk(&unix_fs);
     }
 }
