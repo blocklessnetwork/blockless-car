@@ -24,8 +24,7 @@ fn main() {
     assert_eq!(reader.sections().len(), 6);
     for r in roots.iter() {
         let unix_fs: Result<UnixFs, CarError> = reader.unixfs(r);
-        let mut unix_fs = unix_fs.unwrap();
-        unix_fs.set_name(Some((*r).into()));
+        let unix_fs = unix_fs.unwrap();
         walk(&unix_fs);
     }
 }

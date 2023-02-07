@@ -71,7 +71,13 @@ pub trait CarReader {
     #[inline(always)]
     fn unixfs(&mut self, cid: &Cid) -> Result<UnixFs, CarError> {
         let fs_ipld = self.ipld(cid)?;
-        fs_ipld.try_into()
+        let unixfs: Result<UnixFs, CarError> = fs_ipld.try_into();
+        unixfs.map(|mut f| {
+            if f.cid == None {
+                f.cid = Some(*cid)
+            }
+            f
+        })
     }
 
 }

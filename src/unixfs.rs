@@ -133,11 +133,6 @@ impl UnixFs {
     }
 
     #[inline(always)]
-    pub fn set_name(&mut self, name: Option<String>) {
-        self.name = name;
-    }
-
-    #[inline(always)]
     pub fn hash_type(&self) -> Option<u64> {
         self.hash_type
     }
