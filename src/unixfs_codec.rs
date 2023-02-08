@@ -1,3 +1,4 @@
+use cid::Cid;
 use quick_protobuf::{MessageRead, BytesReader};
 
 use crate::{Decoder, error::CarError, pb::unixfs::Data, unixfs::UnixFs, Ipld};
@@ -57,5 +58,16 @@ impl TryFrom<Ipld> for UnixFs {
 
     fn try_from(value: Ipld) -> Result<Self, Self::Error> {
         value.decode()
+    }
+}
+
+impl TryFrom<(Cid, Ipld)> for UnixFs {
+    type Error = CarError;
+
+    fn try_from(value: (Cid, Ipld)) -> Result<Self, Self::Error> {
+        value.1.decode().map(|mut v| {
+            v.cid = Some(value.0);
+            v
+        })
     }
 }

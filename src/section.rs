@@ -6,7 +6,6 @@ use ipld::Block;
 
 use crate::{error::CarError, Ipld};
 
-
 #[derive(Debug, Clone)]
 pub struct Section {
     cid: Cid, 

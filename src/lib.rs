@@ -8,8 +8,7 @@ mod unixfs_codec;
 pub mod unixfs;
 mod pb;
 
-pub use codec::{Decoder};
+pub use codec::Decoder;
 pub use header::CarHeader;
-
 
 pub type Ipld = ipld::Ipld;

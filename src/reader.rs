@@ -4,7 +4,6 @@ mod reader_v1;
 use crate::{error::CarError, header::CarHeader, section::Section, Ipld, unixfs::UnixFs};
 use integer_encoding::VarIntReader;
 use std::io::{self, Seek, Read};
-pub use reader_v1::*;
 
 pub(crate) use reader_v1::CarReaderV1;
 
@@ -71,13 +70,7 @@ pub trait CarReader {
     #[inline(always)]
     fn unixfs(&mut self, cid: &Cid) -> Result<UnixFs, CarError> {
         let fs_ipld = self.ipld(cid)?;
-        let unixfs: Result<UnixFs, CarError> = fs_ipld.try_into();
-        unixfs.map(|mut f| {
-            if f.cid == None {
-                f.cid = Some(*cid)
-            }
-            f
-        })
+        (*cid, fs_ipld).try_into()
     }
 
 }
