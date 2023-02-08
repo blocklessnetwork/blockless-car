@@ -66,22 +66,22 @@ impl From<pb::unixfs::UnixTime> for UnixTime {
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct UnixFs {
     pub(crate) cid: Option<Cid>,
-    pub(crate) file_type: FileType,
-    pub(crate) file_size: Option<u64>,
-    pub(crate) block_sizes: Vec<u64>,
-    pub(crate) hash_type: Option<u64>,
-    pub(crate) name: Option<String>,
-    pub(crate) fanout: Option<u64>,
     pub(crate) mode: Option<u32>,
+    pub(crate) file_type: FileType,
+    pub(crate) fanout: Option<u64>,
+    pub(crate) block_sizes: Vec<u64>,
+    pub(crate) file_size: Option<u64>,
+    pub(crate) hash_type: Option<u64>,
+    pub(crate) children: Vec<UnixFs>,
     pub(crate) mtime: Option<UnixTime>,
-    pub(crate) children: Vec<UnixFs>
+    pub(crate) file_name: Option<String>,
 }
 
 impl<'a> From<Data<'a>> for UnixFs {
     fn from(value: Data<'a>) -> Self {
         Self {
             cid: None,
-            name: None,
+            file_name: None,
             file_type: value.Type.into(),
             file_size: value.filesize,
             block_sizes: value.blocksizes,
@@ -128,8 +128,8 @@ impl UnixFs {
     }
 
     #[inline(always)]
-    pub fn name(&self) -> Option<&str> {
-        self.name.as_ref().map(String::as_str)
+    pub fn file_name(&self) -> Option<&str> {
+        self.file_name.as_ref().map(String::as_str)
     }
 
     #[inline(always)]

@@ -37,7 +37,7 @@ impl Decoder<UnixFs> for Ipld {
                                     None
                                 };
                                 let mut child = UnixFs::new(cid);
-                                child.name = name;
+                                child.file_name = name;
                                 child.file_size = size;
                                 unix_fs.add_child(child);
                             }

@@ -5,7 +5,7 @@ use rust_car::error::CarError;
 /// walk the node and print the files in the directory.
 fn walk(node: &UnixFs) {
     let cid = node.cid().map(String::from);
-    let file_n = node.name().or(cid.as_ref().map(String::as_str));
+    let file_n = node.file_name().or(cid.as_ref().map(String::as_str));
     let file_s = node.file_size();
     let file_type = node.file_type();
 
