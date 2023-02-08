@@ -21,6 +21,8 @@ fn cat_ipld(reader: &mut impl CarReader, file_cid: Cid) {
 }
 
 /// Cat the file in car file by file id
+/// e.g. ```cargo run --example cat_file bafkreiabltrd5zm73pvi7plq25pef3hm7jxhbi3kv4hapegrkfpkqtkbme```
+/// the example cat file with cid in carv1-basic.car
 fn main() {
     let cid = std::env::args().nth(1).expect("use cid as argument");
     let file = std::path::Path::new("test");

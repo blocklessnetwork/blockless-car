@@ -15,6 +15,8 @@ fn walk(node: &UnixFs) {
     }
 }
 
+/// e.g. ```cargo run --example ls```
+/// the example list file infomation in carv1-basic.car file
 fn main() {
     let file = std::path::Path::new("test");
     let file = file.join("carv1-basic.car");
