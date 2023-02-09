@@ -1,11 +1,16 @@
-use cid::{Cid};
-use rust_car::{reader::{CarReader, self}, unixfs::UnixFs, error::CarError, Ipld};
+use cid::Cid;
+use rust_car::{
+    error::CarError,
+    reader::{self, CarReader},
+    unixfs::UnixFs,
+    Ipld,
+};
 
 fn cat_ipld(reader: &mut impl CarReader, file_cid: Cid) {
     let file_ipld: Ipld = reader.ipld(&file_cid).unwrap();
     match file_ipld {
         rust_car::Ipld::Bytes(b) => {
-            let content = unsafe{std::str::from_utf8_unchecked(&b[..])};
+            let content = unsafe { std::str::from_utf8_unchecked(&b[..]) };
             print!("{content}");
         }
         m @ rust_car::Ipld::Map(_) => {
@@ -35,7 +40,8 @@ fn main() {
         let root_ipld = reader.ipld(r).unwrap();
         let root: Result<UnixFs, CarError> = root_ipld.try_into();
         let root_dir = root.unwrap();
-        let count = root_dir.children()
+        let count = root_dir
+            .children()
             .iter()
             .filter(|u| u.cid().unwrap() == file_cid)
             .count();

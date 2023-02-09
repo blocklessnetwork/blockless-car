@@ -1,9 +1,9 @@
 use cid::Cid;
 
 mod reader_v1;
-use crate::{error::CarError, header::CarHeader, section::Section, Ipld, unixfs::UnixFs};
+use crate::{error::CarError, header::CarHeader, section::Section, unixfs::UnixFs, Ipld};
 use integer_encoding::VarIntReader;
-use std::io::{self, Seek, Read};
+use std::io::{self, Read, Seek};
 
 pub(crate) use reader_v1::CarReaderV1;
 
@@ -52,13 +52,13 @@ where
     let cid = Cid::read_bytes(&mut reader).map_err(|e| CarError::Parsing(e.to_string()))?;
     let pos = reader.stream_position().map_err(|e| CarError::IO(e))?;
     let l = len - ((pos - start) as usize);
-    reader.seek(io::SeekFrom::Current(l as _))
+    reader
+        .seek(io::SeekFrom::Current(l as _))
         .map_err(|e| CarError::IO(e))?;
     Ok(Some(Section::new(cid, pos, l)))
 }
 
 pub trait CarReader {
-
     fn header(&self) -> &CarHeader;
 
     fn sections(&self) -> Vec<Section>;
@@ -72,13 +72,12 @@ pub trait CarReader {
         let fs_ipld = self.ipld(cid)?;
         (*cid, fs_ipld).try_into()
     }
-
 }
 
 #[inline(always)]
-pub fn new_v1<R>(inner: R) -> Result<impl CarReader, CarError> 
+pub fn new_v1<R>(inner: R) -> Result<impl CarReader, CarError>
 where
-    R: Read + Seek
+    R: Read + Seek,
 {
     CarReaderV1::new(inner)
 }

@@ -1,6 +1,6 @@
-use rust_car::reader::{CarReader, self};
-use rust_car::unixfs::UnixFs;
 use rust_car::error::CarError;
+use rust_car::reader::{self, CarReader};
+use rust_car::unixfs::UnixFs;
 
 /// walk the node and print the files in the directory.
 fn walk(node: &UnixFs) {

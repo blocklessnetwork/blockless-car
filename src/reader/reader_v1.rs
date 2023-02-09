@@ -2,7 +2,10 @@
 use cid::Cid;
 
 use crate::{error::CarError, header::CarHeader, reader::CarReader, section::Section, Ipld};
-use std::{io::{Read, Seek}, collections::HashMap};
+use std::{
+    collections::HashMap,
+    io::{Read, Seek},
+};
 
 use super::read_section;
 
@@ -22,7 +25,11 @@ where
         while let Some(section) = read_section(&mut inner)? {
             sections.insert(section.cid(), section);
         }
-        Ok(Self { inner, header, sections })
+        Ok(Self {
+            inner,
+            header,
+            sections,
+        })
     }
 }
 
@@ -42,23 +49,28 @@ where
 
     #[inline]
     fn read_section_data(&mut self, cid: &Cid) -> Result<Vec<u8>, CarError> {
-        let s = self.sections.get(cid).ok_or(CarError::InvalidSection("cid not exist".into()))?;
+        let s = self
+            .sections
+            .get(cid)
+            .ok_or(CarError::InvalidSection("cid not exist".into()))?;
         s.read_data(&mut self.inner)
     }
 
     #[inline]
     fn ipld(&mut self, cid: &Cid) -> Result<Ipld, CarError> {
-        let s = self.sections.get_mut(cid).ok_or(CarError::InvalidSection("cid not exist".into()))?;
+        let s = self
+            .sections
+            .get_mut(cid)
+            .ok_or(CarError::InvalidSection("cid not exist".into()))?;
         s.ipld(&mut self.inner)
     }
-
 }
 
 #[cfg(test)]
 mod test {
 
-    use crate::unixfs::UnixFs;
     use super::*;
+    use crate::unixfs::UnixFs;
 
     #[test]
     fn test_read() {

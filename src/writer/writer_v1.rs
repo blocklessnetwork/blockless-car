@@ -1,6 +1,6 @@
 #![allow(unused)]
-use crate::{error::CarError, header::CarHeader};
 use super::CarWriter;
+use crate::{error::CarError, header::CarHeader};
 use integer_encoding::VarIntWriter;
 
 pub(crate) struct CarWriterV1<W> {
@@ -13,8 +13,7 @@ impl<W> CarWriterV1<W>
 where
     W: std::io::Write,
 {
-
-    fn write_header(&mut self) -> Result<(), CarError>{
+    fn write_header(&mut self) -> Result<(), CarError> {
         let head = self.header.encode()?;
         self.inner.write_varint(head.len())?;
         self.inner.write_all(&head)?;

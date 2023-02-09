@@ -2,7 +2,10 @@ use std::fmt::Display;
 
 use cid::Cid;
 
-use crate::pb::{unixfs::{mod_Data::DataType, Data}, self};
+use crate::pb::{
+    self,
+    unixfs::{mod_Data::DataType, Data},
+};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum FileType {
@@ -156,5 +159,4 @@ impl UnixFs {
     pub fn cid(&self) -> Option<Cid> {
         self.cid
     }
-
 }

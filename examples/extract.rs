@@ -1,17 +1,19 @@
 use cid::Cid;
-use std::{io::Write, fs::{self, File}, path::PathBuf};
 use rust_car::{
-    reader::{
-        CarReader, self
-    }, 
-    unixfs::{UnixFs, FileType}, 
-    error::CarError, 
-    Ipld
+    error::CarError,
+    reader::{self, CarReader},
+    unixfs::{FileType, UnixFs},
+    Ipld,
+};
+use std::{
+    fs::{self, File},
+    io::Write,
+    path::PathBuf,
 };
 
 fn walk_ipld(
-    reader: &mut impl CarReader, 
-    cid: Cid, 
+    reader: &mut impl CarReader,
+    cid: Cid,
     parent: Option<PathBuf>,
     output: Option<&mut File>,
 ) {
@@ -25,7 +27,7 @@ fn walk_ipld(
             let unixfs: Result<UnixFs, CarError> = (cid, m).try_into();
             let unixfs = unixfs.expect("not unix file system");
             if parent.is_none() {
-                parent = std::env::current_dir().ok();   
+                parent = std::env::current_dir().ok();
             }
             match unixfs.file_type() {
                 FileType::File => {
@@ -38,12 +40,13 @@ fn walk_ipld(
                             walk_ipld(reader, cufs.cid().unwrap(), parent.clone(), None);
                         }),
                     }
-                },
+                }
                 FileType::Directory => {
-                    let dir_name = unixfs.file_name()
+                    let dir_name = unixfs
+                        .file_name()
                         .map(String::from)
                         .or(unixfs.cid().map(|cid| cid.to_string()));
-                    
+
                     let dir_name = dir_name.expect("dir name is empty");
                     parent = parent.map(|parent| {
                         let parent = parent.join(dir_name);
@@ -60,9 +63,14 @@ fn walk_ipld(
                                 .open(parent.join(f))
                                 .expect("create file error.")
                         });
-                        walk_ipld(reader, cufs.cid().unwrap(), Some(parent.clone()), file_output.as_mut());
+                        walk_ipld(
+                            reader,
+                            cufs.cid().unwrap(),
+                            Some(parent.clone()),
+                            file_output.as_mut(),
+                        );
                     });
-                },
+                }
                 _ => unimplemented!("not implement"),
             };
         }
