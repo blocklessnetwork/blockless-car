@@ -27,7 +27,6 @@ fn walk_ipld(
             if parent.is_none() {
                 parent = std::env::current_dir().ok();   
             }
-            println!("{unixfs:?}");
             match unixfs.file_type() {
                 FileType::File => {
                     match output {
