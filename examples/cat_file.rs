@@ -10,11 +10,11 @@ fn cat_ipld(reader: &mut impl CarReader, file_cid: Cid) {
         }
         m @ rust_car::Ipld::Map(_) => {
             let unix_fs: Result<UnixFs, CarError> = (file_cid, m).try_into();
-            unix_fs.map(|ufs| {
+            let _ = unix_fs.map(|ufs| {
                 ufs.children().iter().for_each(|cufs| {
                     cat_ipld(reader, cufs.cid().unwrap());
                 });
-            }).expect("not unix file system");
+            });
         }
         _ => {}
     }
