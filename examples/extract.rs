@@ -1,10 +1,11 @@
 use rust_car::{
-    reader::{self, CarReader}, utils::extract_ipld_to_current_path,
+    reader::{self, CarReader}, 
+    utils::extract_ipld_to_current_path,
 };
 
-/// Cat the file in car file by file id
+/// extract all files in car file by file id
 /// e.g. ```cargo run --example extract```
-/// the example extract files from carv1-basic.car
+/// the example cat used file is carv1-basic.car
 fn main() {
     let file = std::path::Path::new("test");
     let file = file.join("carv1-basic.car");

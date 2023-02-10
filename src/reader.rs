@@ -72,6 +72,22 @@ pub trait CarReader {
         let fs_ipld = self.ipld(cid)?;
         (*cid, fs_ipld).try_into()
     }
+
+    #[inline]
+    fn search_file_cid(&mut self, f: &str) -> Result<Cid, CarError> {
+        let roots = self.header().roots();
+        for root in roots.into_iter() {
+            let unixfs = self.unixfs(&root)?;
+            for ufs in unixfs.children() {
+                if let Some(file_name) = ufs.file_name() {
+                    if file_name == f {
+                        return Ok(root)
+                    }
+                }
+            }
+        }
+        Err(CarError::InvalidFile(format!("search {f} fail.")))
+    }
 }
 
 #[inline(always)]
