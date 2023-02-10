@@ -2,28 +2,8 @@ use cid::Cid;
 use rust_car::{
     error::CarError,
     reader::{self, CarReader},
-    unixfs::UnixFs,
-    Ipld,
+    unixfs::UnixFs, utils::cat_ipld
 };
-
-fn cat_ipld(reader: &mut impl CarReader, file_cid: Cid) {
-    let file_ipld: Ipld = reader.ipld(&file_cid).unwrap();
-    match file_ipld {
-        rust_car::Ipld::Bytes(b) => {
-            let content = unsafe { std::str::from_utf8_unchecked(&b[..]) };
-            print!("{content}");
-        }
-        m @ rust_car::Ipld::Map(_) => {
-            let unix_fs: Result<UnixFs, CarError> = (file_cid, m).try_into();
-            let _ = unix_fs.map(|ufs| {
-                ufs.children().iter().for_each(|cufs| {
-                    cat_ipld(reader, cufs.cid().unwrap());
-                });
-            });
-        }
-        _ => {}
-    }
-}
 
 /// Cat the file in car file by file id
 /// e.g. ```cargo run --example cat_file bafkreiabltrd5zm73pvi7plq25pef3hm7jxhbi3kv4hapegrkfpkqtkbme```
@@ -46,7 +26,7 @@ fn main() {
             .filter(|u| u.cid().unwrap() == file_cid)
             .count();
         if count > 0 {
-            cat_ipld(&mut reader, file_cid);
+            cat_ipld(&mut reader, file_cid).unwrap();
         }
     }
 }
