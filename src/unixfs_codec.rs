@@ -75,24 +75,20 @@ impl TryFrom<(Cid, Ipld)> for UnixFs {
     }
 }
 
-impl TryFrom<&UnixFs> for Ipld {
-    type Error = CarError;
-
-    fn try_from(value: &UnixFs) -> Result<Self, Self::Error> {
-        let mut map: BTreeMap<String, Ipld> = BTreeMap::new();
-        map.insert("Hash".to_string(), Ipld::Link(value.cid.unwrap()));
-        let file_name: Ipld = Ipld::String(
-            value
-                .file_name
-                .as_ref()
-                .map(|s| s.clone())
-                .unwrap_or(String::new()),
-        );
-        let tsize = Ipld::Integer(value.file_size.unwrap_or(0) as i128);
-        map.insert("Name".to_string(), file_name);
-        map.insert("Tsize".to_string(), tsize);
-        Ok(Ipld::Map(map))
-    }
+fn parse_child(value: &UnixFs) -> Result<Ipld, CarError> {
+    let mut map: BTreeMap<String, Ipld> = BTreeMap::new();
+    map.insert("Hash".to_string(), Ipld::Link(value.cid.unwrap()));
+    let file_name: Ipld = Ipld::String(
+        value
+            .file_name
+            .as_ref()
+            .map(|s| s.clone())
+            .unwrap_or(String::new()),
+    );
+    let tsize = Ipld::Integer(value.file_size.unwrap_or(0) as i128);
+    map.insert("Name".to_string(), file_name);
+    map.insert("Tsize".to_string(), tsize);
+    Ok(Ipld::Map(map))
 }
 
 impl Encoder<Ipld> for UnixFs {
@@ -114,7 +110,7 @@ impl Encoder<Ipld> for UnixFs {
                 map.insert("Data".into(), Ipld::Bytes(buf));
                 let mut children_ipld: Vec<Ipld> = Vec::new();
                 for child in self.children.iter() {
-                    children_ipld.push(child.try_into()?);
+                    children_ipld.push(parse_child(child)?);
                 }
                 map.insert("Links".to_string(), Ipld::List(children_ipld));
                 Ok(Ipld::Map(map))
