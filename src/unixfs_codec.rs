@@ -75,7 +75,7 @@ impl TryFrom<(Cid, Ipld)> for UnixFs {
     }
 }
 
-fn parse_child(value: &UnixFs) -> Result<Ipld, CarError> {
+fn convert_to_ipld(value: &UnixFs) -> Result<Ipld, CarError> {
     let mut map: BTreeMap<String, Ipld> = BTreeMap::new();
     map.insert("Hash".to_string(), Ipld::Link(value.cid.unwrap()));
     let file_name: Ipld = Ipld::String(
@@ -110,7 +110,7 @@ impl Encoder<Ipld> for UnixFs {
                 map.insert("Data".into(), Ipld::Bytes(buf));
                 let mut children_ipld: Vec<Ipld> = Vec::new();
                 for child in self.children.iter() {
-                    children_ipld.push(parse_child(child)?);
+                    children_ipld.push(convert_to_ipld(child)?);
                 }
                 map.insert("Links".to_string(), Ipld::List(children_ipld));
                 Ok(Ipld::Map(map))
