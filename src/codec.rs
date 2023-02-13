@@ -5,5 +5,5 @@ pub trait Decoder<T> {
 }
 
 pub trait Encoder<T> {
-    fn encode(&self) -> Result<&[u8], CarError>;
+    fn encode(&self) -> Result<T, CarError>;
 }

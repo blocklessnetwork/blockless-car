@@ -66,6 +66,15 @@ impl From<pb::unixfs::UnixTime> for UnixTime {
     }
 }
 
+impl From<UnixTime> for pb::unixfs::UnixTime {
+    fn from(value: UnixTime) -> Self {
+        Self {
+            Seconds: value.seconds,
+            FractionalNanoseconds: value.fractional_nanoseconds,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct UnixFs {
     pub(crate) cid: Option<Cid>,
