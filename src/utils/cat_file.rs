@@ -17,7 +17,7 @@ pub fn write_ipld(
     let file_ipld: Ipld = reader.ipld(&file_cid).unwrap();
     match file_ipld {
         Ipld::Bytes(b) => {
-            output.write_all(&b[..]).map_err(|e| CarError::IO(e))?;
+            output.write_all(&b[..])?;
         }
         m @ Ipld::Map(_) => {
             let unix_fs: Result<UnixFs, CarError> = (file_cid, m).try_into();

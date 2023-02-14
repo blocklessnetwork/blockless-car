@@ -27,8 +27,7 @@ where
     }
     let mut data = vec![0u8; l];
     reader
-        .read_exact(&mut data[..])
-        .map_err(|e| CarError::IO(e))?;
+        .read_exact(&mut data[..])?;
     Ok(Some(data))
 }
 
@@ -45,16 +44,14 @@ where
             return Err(CarError::IO(e));
         }
     };
-    let start = reader.stream_position().map_err(|e| CarError::IO(e))?;
+    let start = reader.stream_position()?;
     if len > MAX_ALLOWED_SECTION_SIZE {
         return Err(CarError::TooLargeSection(len));
     }
     let cid = Cid::read_bytes(&mut reader).map_err(|e| CarError::Parsing(e.to_string()))?;
-    let pos = reader.stream_position().map_err(|e| CarError::IO(e))?;
+    let pos = reader.stream_position()?;
     let l = len - ((pos - start) as usize);
-    reader
-        .seek(io::SeekFrom::Current(l as _))
-        .map_err(|e| CarError::IO(e))?;
+    reader.seek(io::SeekFrom::Current(l as _))?;
     Ok(Some(Section::new(cid, pos, l)))
 }
 

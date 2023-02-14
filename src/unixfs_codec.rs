@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use cid::Cid;
-use quick_protobuf::{BytesReader, BytesWriter, MessageRead, MessageWrite, Writer};
+use quick_protobuf::{BytesReader, MessageRead, MessageWrite, Writer};
 
 use crate::{
     codec::Encoder,
@@ -105,7 +105,7 @@ impl Encoder<Ipld> for UnixFs {
                 data.hashType = self.hash_type;
                 data.mtime = self.mtime().map(|s| s.clone().into());
                 let mut buf: Vec<u8> = Vec::new();
-                let mut bw = Writer::new(BytesWriter::new(&mut buf));
+                let mut bw = Writer::new(&mut buf);
                 data.write_message(&mut bw).map_err(|e| CarError::Parsing(e.to_string()))?;
                 map.insert("Data".into(), Ipld::Bytes(buf));
                 let mut children_ipld: Vec<Ipld> = Vec::new();
@@ -117,5 +117,13 @@ impl Encoder<Ipld> for UnixFs {
             }
             _ => Err(CarError::Parsing("Not support unixfs format".into())),
         }
+    }
+}
+
+impl TryFrom<UnixFs> for Ipld {
+    type Error = CarError;
+
+    fn try_from(value: UnixFs) -> Result<Self, Self::Error> {
+        value.encode()
     }
 }

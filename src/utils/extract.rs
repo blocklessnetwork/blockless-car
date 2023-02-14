@@ -74,15 +74,14 @@ fn extract_ipld_inner(
                     let dir_name = dir_name.ok_or(CarError::InvalidFile("dir name is empty".into()))?;
                     parent = parent.map(|parent| parent.join(dir_name));
                     let parent = parent.unwrap();
-                    fs::create_dir(&parent).map_err(|e| CarError::IO(e))?;
+                    fs::create_dir(&parent)?;
                     for cufs in unixfs.children().iter() {
                         let file_name = cufs.file_name();
                         let mut file_output = if let Some(f) = file_name {
                             Some(fs::OpenOptions::new()
                                 .create(true)
                                 .write(true)
-                                .open(parent.join(f))
-                                .map_err(|e| CarError::IO(e))?)
+                                .open(parent.join(f))?)
                         } else {
                             None
                         };
