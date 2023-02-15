@@ -1,4 +1,4 @@
-use std::{path::{Path, PathBuf}, collections::VecDeque, fs};
+use std::{path::{Path, PathBuf}, collections::{VecDeque, HashMap, BinaryHeap}, fs};
 
 use crate::{error::CarError, Ipld, unixfs::{UnixFs, FileType}};
 use cid::{multihash::{Code, MultihashDigest}, Cid};
@@ -29,38 +29,59 @@ fn new_unixfs(p: &PathBuf) -> Result<UnixFs, CarError> {
     Ok(UnixFs::new(cid))
 }
 
-fn walk_dir_queue(dir_queue: &mut VecDeque<PathBuf>) -> Result<Ipld, CarError> {
-    let parent = dir_queue.pop_front().unwrap();
-    let mut unix_dir = new_unixfs(&parent)?;
-    unix_dir.file_type = FileType::Directory;
-    for entry in fs::read_dir(parent)? {
-        let entry = entry?;
-        let file_type = entry.file_type()?;
-        if file_type.is_dir() {
-            dir_queue.push_front(entry.path().absolutize()?.to_path_buf());
-            dir_queue.front();
-            continue;
+fn walk_inner<'a>(
+    dir_queue: &mut VecDeque<PathBuf>,
+    path_map: &'a mut HashMap<PathBuf, UnixFs>,
+) -> Result<(), CarError> {
+    while dir_queue.len() > 0 {
+        let parent = dir_queue.pop_back().unwrap();
+        let mut unix_dir = new_unixfs(&parent)?;
+        unix_dir.file_type = FileType::Directory;
+        for entry in fs::read_dir(&parent)? {
+            let entry = entry?;
+            let file_type = entry.file_type()?;
+            if file_type.is_dir() {
+                dir_queue.push_back(entry.path().absolutize()?.to_path_buf());
+                continue;
+            }
+            if file_type.is_file() {
+                let file_path = entry.path();
+                let mut unixfile = new_unixfs(&file_path)?;
+                unixfile.file_name = entry.file_name().to_str().map(String::from);
+                unixfile.file_size = Some(entry.metadata()?.len());
+                unixfile.file_type = FileType::File;
+                unix_dir.add_child(unixfile);
+            }
+            //skip other types.
         }
-        if file_type.is_file() {
-            let file_path = entry.path();
-            let mut unixfile = new_unixfs(&file_path)?;
-            unixfile.file_name = entry.file_name().to_str().map(String::from);
-            unixfile.file_size = Some(entry.metadata()?.len());
-            unixfile.file_type = FileType::File;
-            unix_dir.add_child(unixfile);
-        }
-        //skip other types.
+        path_map.insert(parent, unix_dir);
     }
-    let unix_ipld: Result<Ipld, CarError> = unix_dir.try_into();
-    unix_ipld
+    Ok(())
 }
 
-pub fn walk_root(root: impl AsRef<Path>) -> Result<Ipld, CarError> {
+pub fn walk_dir(root: impl AsRef<Path>) -> Result<Ipld, CarError> {
     let src_path = root.as_ref().absolutize()?;
     let mut queue = VecDeque::new();
-
-    queue.push_front(src_path.into());
-    walk_dir_queue(&mut queue)
+    let mut path_map: HashMap<PathBuf, UnixFs> = HashMap::new();
+    let root_path: PathBuf = src_path.into();
+    queue.push_back(root_path.clone());
+    walk_inner(&mut queue, &mut path_map)?;
+    let keys: BinaryHeap<_> = path_map.keys().map(|s| s.clone()).collect();
+    let mut keys = keys.into_sorted_vec();
+    keys.reverse();
+    let mut root = None;
+    for key in keys.iter() {
+        let unixfs = path_map.remove(key).unwrap();
+        let parent = key.parent().map(|parent| {
+            path_map.get_mut(parent)
+        }).flatten();
+        if parent.is_none()  {
+            root = Some(unixfs);
+        } else {
+            parent.unwrap().add_child(unixfs);
+        }
+    }
+    root.unwrap().try_into()
 }
 
 mod test {
@@ -69,7 +90,7 @@ mod test {
     #[test]
     fn test_walk() {
         let current = std::env::current_dir().unwrap();
-        let dir_ipld = walk_root(current).unwrap();
+        let dir_ipld = walk_dir(current.join(".")).unwrap();
         assert!(matches!(dir_ipld, ipld::Ipld::Map(_)));
         let unixfs: Result<UnixFs, CarError> = dir_ipld.try_into();
         let unixfs = unixfs.unwrap();
