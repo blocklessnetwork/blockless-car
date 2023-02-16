@@ -61,7 +61,7 @@ where
         let s = self
             .sections
             .get_mut(cid)
-            .ok_or(CarError::InvalidSection("cid not exist".into()))?;
+            .ok_or(CarError::NotFound("cid not exist".into()))?;
         s.ipld(&mut self.inner)
     }
 }
