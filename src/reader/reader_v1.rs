@@ -88,5 +88,7 @@ mod test {
                 assert_eq!(fs.children.len(), 3);
             });
         }
+        let rs = reader.search_file_cid("not-distributed.jpg");
+        println!("{rs:?}");
     }
 }

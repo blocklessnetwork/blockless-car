@@ -16,6 +16,7 @@ pub fn ipld_write(
 {
     while let Some(file_cid) = vecq.pop_front() {
         let file_ipld: Ipld = reader.ipld(&file_cid).unwrap();
+        
         match file_ipld {
             Ipld::Bytes(b) => {
                 output.write_all(&b[..])?;
@@ -23,7 +24,7 @@ pub fn ipld_write(
             m @ Ipld::Map(_) => {
                 let unix_fs: Result<UnixFs, CarError> = (file_cid, m).try_into();
                 let ufs = unix_fs?;
-                for cufs in ufs.children().iter(){
+                for cufs in ufs.children().iter() {
                     vecq.push_back(cufs.cid.unwrap());
                 }
             }
