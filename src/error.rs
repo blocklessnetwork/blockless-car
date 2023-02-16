@@ -16,4 +16,7 @@ pub enum CarError {
 
     #[error("too large section error: {0}")]
     TooLargeSection(usize),
+
+    #[error("Not found {0}")]
+    NotFound(String),
 }
