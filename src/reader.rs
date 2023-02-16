@@ -3,7 +3,7 @@ use cid::Cid;
 mod reader_v1;
 use crate::{error::CarError, header::CarHeader, section::Section, unixfs::UnixFs, Ipld};
 use integer_encoding::VarIntReader;
-use std::io::{self, Read, Seek};
+use std::{io::{self, Read, Seek}, collections::VecDeque};
 
 pub(crate) use reader_v1::CarReaderV1;
 
@@ -70,20 +70,38 @@ pub trait CarReader {
         (*cid, fs_ipld).try_into()
     }
 
-    #[inline]
-    fn search_file_cid(&mut self, f: &str) -> Result<Cid, CarError> {
-        let roots = self.header().roots();
-        for root in roots.into_iter() {
-            let unixfs = self.unixfs(&root)?;
-            for ufs in unixfs.children() {
-                if let Some(file_name) = ufs.file_name() {
-                    if file_name == f {
-                        return Ok(root)
+
+    fn search_file_cid_inner(&mut self, searchq: &mut VecDeque<Cid>, f: &str) -> Result<Cid, CarError> {
+        while let Some(root_cid) = searchq.pop_front() {
+            let fs_ipld = self.ipld(&root_cid)?;
+            if matches!(fs_ipld, Ipld::Map(_)) {
+                let unixfs: UnixFs = (root_cid, fs_ipld).try_into()?;
+                for ufs in unixfs.children() {
+                    if let Some(file_name) = ufs.file_name() {
+                        if file_name == f {
+                            return Ok(unixfs.cid.unwrap())
+                        }
                     }
+                    searchq.push_back(ufs.cid.unwrap());
                 }
             }
         }
-        Err(CarError::InvalidFile(format!("search {f} fail.")))
+        Err(CarError::NotFound(format!("search {f} fail.")))
+    }
+
+    #[inline]
+    fn search_file_cid(&mut self, f: &str) -> Result<Cid, CarError> {
+        let roots = self.header().roots();
+        let mut searchq = VecDeque::new();
+        for root in roots.into_iter() {
+            searchq.push_back(root);
+            match self.search_file_cid_inner(&mut searchq, f) {
+                Ok(o) => return Ok(o),
+                Err(CarError::NotFound(_)) => continue,
+                Err(e) => return Err(e),
+            }
+        }
+        Err(CarError::NotFound(format!("search {f} fail.")))
     }
 }
 
