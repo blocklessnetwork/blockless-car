@@ -78,7 +78,7 @@ pub trait CarReader {
                 for ufs in unixfs.children() {
                     if let Some(file_name) = ufs.file_name() {
                         if file_name == f {
-                            return Ok(unixfs.cid.unwrap())
+                            return Ok(ufs.cid.unwrap())
                         }
                     }
                     searchq.push_back(ufs.cid.unwrap());
