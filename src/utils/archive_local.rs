@@ -57,21 +57,6 @@ where
                     writer.write(file_cid, &buf)?;
                     ufs.cid = Some(file_cid);
                     
-                    // let mut file_unixfs = UnixFs::default();
-                    // file_unixfs.file_type = FileType::File;
-                    // file_unixfs.file_size = ufs.file_size;
-                    // let mut file_link = UnixFs::new(file_cid);
-                    // file_link.file_size = file_unixfs.file_size;
-                    // file_link.file_name = Some(String::new());
-                    // file_unixfs.add_child(file_link);
-
-                    // let file_unixfs_ipld: Ipld = file_unixfs.encode()?;
-                    // ufs.add_child(file_unixfs);
-                    // let bs = DagPbCodec.encode(&file_unixfs_ipld)
-                    //     .map_err(|e| CarError::Parsing(e.to_string()))?;
-                    // let cid = pb_cid(&bs);
-                    // ufs.cid = Some(cid);
-                    // writer.write(ufs.cid.unwrap(), bs)?;
                 },
                 _ => unreachable!("not support!"),
             }
