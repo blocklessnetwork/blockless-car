@@ -18,7 +18,6 @@ where
         self.inner.write_varint(head.len())?;
         self.inner.write_all(&head)?;
         self.is_header_written = true;
-        println!("{head:?}");
         Ok(())
     }
 

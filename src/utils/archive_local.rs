@@ -50,26 +50,28 @@ where
                     let mut file = fs::OpenOptions::new()
                         .read(true)
                         .open(filepath)?;
+                    
                     let mut buf = Vec::<u8>::new();
                     file.read_to_end(&mut buf)?;
                     let file_cid = raw_cid(&buf);
                     writer.write(file_cid, &buf)?;
+                    ufs.cid = Some(file_cid);
                     
-                    let mut file_unixfs = UnixFs::default();
-                    file_unixfs.file_type = FileType::File;
-                    file_unixfs.file_size = ufs.file_size;
-                    let mut file_link = UnixFs::new(file_cid);
-                    file_link.file_size = file_unixfs.file_size;
-                    file_link.file_name = Some(String::new());
-                    file_unixfs.add_child(file_link);
+                    // let mut file_unixfs = UnixFs::default();
+                    // file_unixfs.file_type = FileType::File;
+                    // file_unixfs.file_size = ufs.file_size;
+                    // let mut file_link = UnixFs::new(file_cid);
+                    // file_link.file_size = file_unixfs.file_size;
+                    // file_link.file_name = Some(String::new());
+                    // file_unixfs.add_child(file_link);
 
-                    let file_unixfs_ipld: Ipld = file_unixfs.encode()?;
-                    ufs.add_child(file_unixfs);
-                    let bs = DagPbCodec.encode(&file_unixfs_ipld)
-                        .map_err(|e| CarError::Parsing(e.to_string()))?;
-                    let cid = pb_cid(&bs);
-                    ufs.cid = Some(cid);
-                    writer.write(ufs.cid.unwrap(), bs)?;
+                    // let file_unixfs_ipld: Ipld = file_unixfs.encode()?;
+                    // ufs.add_child(file_unixfs);
+                    // let bs = DagPbCodec.encode(&file_unixfs_ipld)
+                    //     .map_err(|e| CarError::Parsing(e.to_string()))?;
+                    // let cid = pb_cid(&bs);
+                    // ufs.cid = Some(cid);
+                    // writer.write(ufs.cid.unwrap(), bs)?;
                 },
                 _ => unreachable!("not support!"),
             }
@@ -87,7 +89,6 @@ where
         let file_name = abs_path.file_name().map(|f| f.to_str()).flatten();
         match abs_path.parent() {
             Some(parent) => {
-                println!("{parent:?}");
                 let parent = Rc::new(parent.to_path_buf());
                 path_map.get_mut(&parent).map(|p| {
                     let dirs: Vec<_> = p.children.iter_mut()
@@ -175,21 +176,18 @@ where
     for key in keys.iter() {
         walker(key, &mut path_map)?;
     }
-    println!("{path_map:?}");
-    let root = keys.last().map(|k| path_map.get(k).map(|v| v.cid).flatten()).flatten();
-    println!("{root:?}, {keys:?}");
     Ok(())
 }
 
 mod test {
+    #[allow(unused)]
     use super::*;
 
     #[test]
     fn test_walk_dir() {
         let current = std::env::current_dir().unwrap();
-        let pwd = current.join(".");
-        let _rootcid = walk_dir(pwd, |_path, ufs| {
-            // assert_eq!(ufs.file_type, FileType::Directory);
+        let pwd = current.join("test");
+        let _rootcid = walk_dir(pwd, |path, ufs| {
             Ok(())
         });
         
