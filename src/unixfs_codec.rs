@@ -106,7 +106,8 @@ impl Encoder<Ipld> for UnixFs {
                 data.mtime = self.mtime().map(|s| s.clone().into());
                 let mut buf: Vec<u8> = Vec::new();
                 let mut bw = Writer::new(&mut buf);
-                data.write_message(&mut bw).map_err(|e| CarError::Parsing(e.to_string()))?;
+                data.write_message(&mut bw)
+                    .map_err(|e| CarError::Parsing(e.to_string()))?;
                 map.insert("Data".into(), Ipld::Bytes(buf));
                 let mut children_ipld: Vec<Ipld> = Vec::new();
                 for child in self.children.iter() {

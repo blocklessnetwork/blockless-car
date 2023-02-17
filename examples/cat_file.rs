@@ -1,5 +1,5 @@
 use rust_car::{
-    reader::{self, CarReader}, 
+    reader::{self, CarReader},
     utils::cat_ipld,
 };
 
@@ -12,6 +12,8 @@ fn main() {
     let file = file.join("carv1-basic.car");
     let file = std::fs::File::open(file).unwrap();
     let mut reader = reader::new_v1(file).unwrap();
-    let cid = reader.search_file_cid(&file_name).expect("search file error.");
+    let cid = reader
+        .search_file_cid(&file_name)
+        .expect("search file error.");
     cat_ipld(&mut reader, cid).unwrap();
 }

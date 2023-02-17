@@ -2,7 +2,8 @@ use cid::Cid;
 use rust_car::{
     error::CarError,
     reader::{self, CarReader},
-    unixfs::UnixFs, utils::cat_ipld
+    unixfs::UnixFs,
+    utils::cat_ipld,
 };
 
 /// Cat the file in car file by file id

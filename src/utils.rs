@@ -1,7 +1,7 @@
-mod extract;
-mod cat_file;
 mod archive_local;
+mod cat_file;
+mod extract;
 
-pub use extract::*;
-pub use cat_file::*;
 pub use archive_local::*;
+pub use cat_file::*;
+pub use extract::*;
