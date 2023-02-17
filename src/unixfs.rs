@@ -50,6 +50,19 @@ impl From<DataType> for FileType {
     }
 }
 
+impl From<FileType> for DataType {
+    fn from(value: FileType) -> Self {
+        match value {
+            FileType::Raw => DataType::Raw,
+            FileType::Directory => DataType::Directory,
+            FileType::File => DataType::File,
+            FileType::Metadata => DataType::Metadata,
+            FileType::Symlink => DataType::Symlink,
+            FileType::HAMTShard => DataType::HAMTShard,
+        }
+    }
+}
+
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub struct UnixTime {

@@ -6,7 +6,7 @@ use quick_protobuf::{BytesReader, MessageRead, MessageWrite, Writer};
 use crate::{
     codec::Encoder,
     error::CarError,
-    pb::unixfs::{mod_Data::DataType, Data},
+    pb::unixfs::Data,
     unixfs::{FileType, UnixFs},
     Decoder, Ipld,
 };
@@ -94,10 +94,10 @@ fn convert_to_ipld(value: &UnixFs) -> Result<Ipld, CarError> {
 impl Encoder<Ipld> for UnixFs {
     fn encode(&self) -> Result<Ipld, CarError> {
         match self.file_type {
-            FileType::Directory => {
+            FileType::Directory | FileType::File => {
                 let mut map = BTreeMap::new();
                 let mut data = Data::default();
-                data.Type = DataType::Directory;
+                data.Type = self.file_type.into();
                 data.fanout = self.fanout;
                 data.blocksizes = self.block_sizes.clone();
                 data.mode = self.mode;
