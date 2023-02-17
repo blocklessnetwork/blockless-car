@@ -38,7 +38,6 @@ where
     let header = CarHeader::V1(CarHeaderV1::new(vec![root_cid.unwrap()]));
     let mut writer = CarWriterV1::new(to_carfile, header);
     walk_dir(path, |abs_path, path_map| -> Result<(), CarError> {
-        println!("{abs_path:?}");
         
         let unixfs = path_map.get_mut(abs_path).unwrap();
         
@@ -75,8 +74,6 @@ where
                 _ => unreachable!("not support!"),
             }
         }
-        println!("{unixfs:?}");
-        
         let fs_ipld: Ipld = unixfs.encode()?;
         let bs = DagPbCodec.encode(&fs_ipld)
             .map_err(|e| CarError::Parsing(e.to_string()))?;
@@ -88,7 +85,6 @@ where
         writer.write(cid, bs)?;
         unixfs.cid = Some(cid);
         let file_name = abs_path.file_name().map(|f| f.to_str()).flatten();
-        println!("{abs_path:?}  {file_name:?}");
         match abs_path.parent() {
             Some(parent) => {
                 println!("{parent:?}");
@@ -101,7 +97,6 @@ where
                         let filen = u.file_name.as_ref().map(String::as_str);
                         filen.cmp(&file_name)
                     }) {
-                        println!("-----{pos:?}");
                         p.children[pos].cid = Some(cid);
                     }
                 });
