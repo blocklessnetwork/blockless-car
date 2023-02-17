@@ -3,7 +3,10 @@ use cid::Cid;
 mod reader_v1;
 use crate::{error::CarError, header::CarHeader, section::Section, unixfs::UnixFs, Ipld};
 use integer_encoding::VarIntReader;
-use std::{io::{self, Read, Seek}, collections::VecDeque};
+use std::{
+    collections::VecDeque,
+    io::{self, Read, Seek},
+};
 
 pub(crate) use reader_v1::CarReaderV1;
 
@@ -26,8 +29,7 @@ where
         return Err(CarError::TooLargeSection(l));
     }
     let mut data = vec![0u8; l];
-    reader
-        .read_exact(&mut data[..])?;
+    reader.read_exact(&mut data[..])?;
     Ok(Some(data))
 }
 
@@ -70,7 +72,11 @@ pub trait CarReader {
         (*cid, fs_ipld).try_into()
     }
 
-    fn search_file_cid_inner(&mut self, searchq: &mut VecDeque<Cid>, f: &str) -> Result<Cid, CarError> {
+    fn search_file_cid_inner(
+        &mut self,
+        searchq: &mut VecDeque<Cid>,
+        f: &str,
+    ) -> Result<Cid, CarError> {
         while let Some(root_cid) = searchq.pop_front() {
             let fs_ipld = self.ipld(&root_cid)?;
             if matches!(fs_ipld, Ipld::Map(_)) {
@@ -78,7 +84,7 @@ pub trait CarReader {
                 for ufs in unixfs.children() {
                     if let Some(file_name) = ufs.file_name() {
                         if file_name == f {
-                            return Ok(ufs.cid.unwrap())
+                            return Ok(ufs.cid.unwrap());
                         }
                     }
                     searchq.push_back(ufs.cid.unwrap());

@@ -1,17 +1,30 @@
-use rust_car::error::CarError;
+use std::collections::{VecDeque, HashMap};
+
+use cid::Cid;
+use rust_car::Ipld;
 use rust_car::reader::{self, CarReader};
 use rust_car::unixfs::UnixFs;
 
 /// walk the node and print the files in the directory.
-fn walk(node: &UnixFs) {
-    let cid = node.cid().map(String::from);
-    let file_n = node.file_name().or(cid.as_ref().map(String::as_str));
-    let file_s = node.file_size();
-    let file_type = node.file_type();
-
-    println!("cid: {cid:?} fileName: {file_n:?} fileSize: {file_s:?} fileType: {file_type:?}");
-    for n in node.children().iter() {
-        walk(n)
+fn walk(vecq: &mut VecDeque<Cid>, reader: &mut impl CarReader) {
+    let mut cache: HashMap<Cid, String> = HashMap::new();
+    while let Some(file_cid) = vecq.pop_front() {
+        let file_ipld: Ipld = reader.ipld(&file_cid).unwrap();
+        let file_n = cache.get(&file_cid).map_or(file_cid.to_string(), |c| c.to_string());
+        println!("{file_n}");
+        match file_ipld {
+            m @ Ipld::Map(_) => {
+                let unixfs: UnixFs = m.try_into().unwrap();
+                for n in unixfs.children().into_iter() {
+                    let cid = n.cid().unwrap();
+                    vecq.push_back(cid);
+                    n.file_name().map(|f| {
+                        cache.insert(cid, file_n.clone() + "/" + f);
+                    });
+                }
+            }
+            _ => {}
+        }
     }
 }
 
@@ -19,19 +32,16 @@ fn walk(node: &UnixFs) {
 /// the example list file infomation in carv1-basic.car file
 fn main() {
     let file_name = std::env::args().nth(1);
-    let path = file_name.as_ref()
-        .map(|f| f.into())
-        .unwrap_or_else(|| {
-            let file = std::path::Path::new(".");
-            file.join("111.car")
-        });
+    let path = file_name.as_ref().map(|f| f.into()).unwrap_or_else(|| {
+        let file = std::path::Path::new(".");
+        file.join("111.car")
+    });
     let file = std::fs::File::open(path).unwrap();
     let mut reader = reader::new_v1(file).unwrap();
     let roots = reader.header().roots();
-    assert_eq!(reader.sections().len(), 6);
+    let mut queue: VecDeque<Cid> = VecDeque::new();
     for r in roots.iter() {
-        let unix_fs: Result<UnixFs, CarError> = reader.unixfs(r);
-        let unix_fs = unix_fs.unwrap();
-        walk(&unix_fs);
+        queue.push_front(*r);
+        walk(&mut queue, &mut reader);
     }
 }

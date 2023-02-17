@@ -1,5 +1,5 @@
 use rust_car::{
-    reader::{self, CarReader}, 
+    reader::{self, CarReader},
     utils::extract_ipld_to_current_path,
 };
 

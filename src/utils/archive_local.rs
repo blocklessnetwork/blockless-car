@@ -1,32 +1,32 @@
 use std::{
-    path::{Path, PathBuf}, 
-    collections::{VecDeque, HashMap, BinaryHeap}, 
-    fs, 
-    io::{self, Read}, 
-    rc::Rc
+    collections::{BinaryHeap, HashMap, VecDeque},
+    fs,
+    io::{self, Read},
+    path::{Path, PathBuf},
+    rc::Rc,
 };
 
 use crate::{
-    error::CarError, Ipld, 
-    unixfs::{UnixFs, FileType}, 
-    CarHeader, 
-    header::CarHeaderV1, 
-    writer::{CarWriterV1, CarWriter}, 
-    codec::Encoder
+    codec::Encoder,
+    error::CarError,
+    header::CarHeaderV1,
+    unixfs::{FileType, UnixFs},
+    writer::{CarWriter, CarWriterV1},
+    CarHeader, Ipld,
 };
-use cid::{multihash::{Code, MultihashDigest}, Cid};
-use ipld::{prelude::Codec, pb::DagPbCodec, raw::RawCodec};
+use cid::{
+    multihash::{Code, MultihashDigest},
+    Cid,
+};
+use ipld::{pb::DagPbCodec, prelude::Codec, raw::RawCodec};
 use path_absolutize::*;
 
 /// archive the directory to the target CAR format file
 /// `path` is the directory archived in to the CAR file.
 /// `to_carfile` is the target file.
-pub fn archive_local<T>(
-    path: impl AsRef<Path>,
-    to_carfile: T,
-) -> Result<(), CarError>
+pub fn archive_local<T>(path: impl AsRef<Path>, to_carfile: T) -> Result<(), CarError>
 where
-    T: std::io::Write + std::io::Seek
+    T: std::io::Write + std::io::Seek,
 {
     let src_path = path.as_ref();
     if !src_path.exists() {
@@ -38,34 +38,31 @@ where
     let header = CarHeader::V1(CarHeaderV1::new(vec![root_cid.unwrap()]));
     let mut writer = CarWriterV1::new(to_carfile, header);
     walk_dir(path, |abs_path, path_map| -> Result<(), CarError> {
-        
         let unixfs = path_map.get_mut(abs_path).unwrap();
-        
+
         for ufs in unixfs.children.iter_mut() {
             match ufs.file_type {
-                FileType::Directory => {},
+                FileType::Directory => {}
                 FileType::File => {
                     //TODO: split file
                     let filepath = abs_path.join(ufs.file_name.as_ref().unwrap());
-                    let mut file = fs::OpenOptions::new()
-                        .read(true)
-                        .open(filepath)?;
-                    
+                    let mut file = fs::OpenOptions::new().read(true).open(filepath)?;
+
                     let mut buf = Vec::<u8>::new();
                     file.read_to_end(&mut buf)?;
                     let file_cid = raw_cid(&buf);
                     writer.write(file_cid, &buf)?;
                     ufs.cid = Some(file_cid);
-                    
-                },
+                }
                 _ => unreachable!("not support!"),
             }
         }
         let fs_ipld: Ipld = unixfs.encode()?;
-        let bs = DagPbCodec.encode(&fs_ipld)
+        let bs = DagPbCodec
+            .encode(&fs_ipld)
             .map_err(|e| CarError::Parsing(e.to_string()))?;
         let cid = pb_cid(&bs);
-        
+
         if root_path.as_ref() == abs_path.as_ref() {
             root_cid = Some(cid);
         }
@@ -76,7 +73,9 @@ where
             Some(parent) => {
                 let parent = Rc::new(parent.to_path_buf());
                 path_map.get_mut(&parent).map(|p| {
-                    let dirs: Vec<_> = p.children.iter_mut()
+                    let dirs: Vec<_> = p
+                        .children
+                        .iter_mut()
                         .filter(|f| matches!(f.file_type, FileType::Directory))
                         .collect();
                     if let Ok(pos) = dirs.binary_search_by(|u| {
@@ -87,13 +86,11 @@ where
                     }
                 });
             }
-            None  => unimplemented!("should not happend"),
+            None => unimplemented!("should not happend"),
         }
         Ok(())
     })?;
-    let root_cid = root_cid.ok_or(
-        CarError::NotFound("root cid not found.".to_string())
-    )?;
+    let root_cid = root_cid.ok_or(CarError::NotFound("root cid not found.".to_string()))?;
     let header = CarHeader::V1(CarHeaderV1::new(vec![root_cid]));
     writer.rewrite_header(header)
 }
@@ -123,7 +120,7 @@ fn walk_inner<'a>(
             let file_type = entry.file_type()?;
             let file_path = entry.path();
             let abs_path = file_path.absolutize()?.to_path_buf();
-            
+
             let mut unixfile = UnixFs::default();
             unixfile.file_name = entry.file_name().to_str().map(String::from);
             unixfile.file_size = Some(entry.metadata()?.len());
@@ -142,12 +139,9 @@ fn walk_inner<'a>(
     Ok(())
 }
 
-pub fn walk_dir<T>(
-    root: impl AsRef<Path>, 
-    mut walker: T,
-) -> Result<(), CarError> 
+pub fn walk_dir<T>(root: impl AsRef<Path>, mut walker: T) -> Result<(), CarError>
 where
-    T: FnMut(&Rc<PathBuf>, &mut HashMap<Rc<PathBuf>, UnixFs>) -> Result<(), CarError>
+    T: FnMut(&Rc<PathBuf>, &mut HashMap<Rc<PathBuf>, UnixFs>) -> Result<(), CarError>,
 {
     let src_path = root.as_ref().absolutize()?;
     let mut queue = VecDeque::new();
@@ -172,9 +166,6 @@ mod test {
     fn test_walk_dir() {
         let current = std::env::current_dir().unwrap();
         let pwd = current.join("test");
-        let _rootcid = walk_dir(pwd, |path, ufs| {
-            Ok(())
-        });
-        
-    }    
+        let _rootcid = walk_dir(pwd, |path, ufs| Ok(()));
+    }
 }

@@ -6,8 +6,8 @@ pub mod reader;
 pub mod section;
 pub mod unixfs;
 mod unixfs_codec;
-pub mod writer;
 pub mod utils;
+pub mod writer;
 
 pub use codec::Decoder;
 pub use header::CarHeader;

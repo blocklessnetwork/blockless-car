@@ -1,25 +1,21 @@
 use std::fs;
-use std::path::Path;
-use std::{path::PathBuf, fs::File};
 use std::io::Write;
+use std::path::Path;
+use std::{fs::File, path::PathBuf};
 
 use cid::Cid;
 
 use crate::error::CarError;
-use crate::unixfs::{UnixFs, FileType};
+use crate::unixfs::{FileType, UnixFs};
 use crate::{reader::CarReader, Ipld};
 
-
-/// extract files to current path from CAR file. 
+/// extract files to current path from CAR file.
 /// `cid` is the root cid
-pub fn extract_ipld_to_current_path(
-    reader: &mut impl CarReader,
-    cid: Cid,
-) -> Result<(), CarError> {
+pub fn extract_ipld_to_current_path(reader: &mut impl CarReader, cid: Cid) -> Result<(), CarError> {
     extract_ipld(reader, cid, None::<PathBuf>)
 }
 
-/// extract files from CAR file. 
+/// extract files from CAR file.
 /// if the `parent` path is none, will use current path as root path.
 /// `cid` is the root cid
 pub fn extract_ipld(
@@ -31,8 +27,7 @@ pub fn extract_ipld(
     extract_ipld_inner(reader, cid, parent, None)
 }
 
-
-/// inner function, extract files from CAR file. 
+/// inner function, extract files from CAR file.
 /// if the `parent` path is none, will use current path as root path.
 /// `cid` is the file cid
 fn extract_ipld_inner(
@@ -56,13 +51,27 @@ fn extract_ipld_inner(
             match unixfs.file_type() {
                 FileType::File => {
                     match output {
-                        Some(o) => for cufs in unixfs.children().iter() {
-                            // the file is contains by more than 1 block, the file name.
-                            extract_ipld_inner(reader, cufs.cid().unwrap(), parent.clone(), Some(o))?;
-                        },
-                        None => for cufs in unixfs.children().iter() {
-                            extract_ipld_inner(reader, cufs.cid().unwrap(), parent.clone(), None)?;
-                        },
+                        Some(o) => {
+                            for cufs in unixfs.children().iter() {
+                                // the file is contains by more than 1 block, the file name.
+                                extract_ipld_inner(
+                                    reader,
+                                    cufs.cid().unwrap(),
+                                    parent.clone(),
+                                    Some(o),
+                                )?;
+                            }
+                        }
+                        None => {
+                            for cufs in unixfs.children().iter() {
+                                extract_ipld_inner(
+                                    reader,
+                                    cufs.cid().unwrap(),
+                                    parent.clone(),
+                                    None,
+                                )?;
+                            }
+                        }
                     }
                 }
                 FileType::Directory => {
@@ -71,17 +80,20 @@ fn extract_ipld_inner(
                         .map(String::from)
                         .or(unixfs.cid().map(|cid| cid.to_string()));
 
-                    let dir_name = dir_name.ok_or(CarError::InvalidFile("dir name is empty".into()))?;
+                    let dir_name =
+                        dir_name.ok_or(CarError::InvalidFile("dir name is empty".into()))?;
                     parent = parent.map(|parent| parent.join(dir_name));
                     let parent = parent.unwrap();
                     fs::create_dir(&parent)?;
                     for cufs in unixfs.children().iter() {
                         let file_name = cufs.file_name();
                         let mut file_output = if let Some(f) = file_name {
-                            Some(fs::OpenOptions::new()
-                                .create(true)
-                                .write(true)
-                                .open(parent.join(f))?)
+                            Some(
+                                fs::OpenOptions::new()
+                                    .create(true)
+                                    .write(true)
+                                    .open(parent.join(f))?,
+                            )
                         } else {
                             None
                         };
@@ -91,7 +103,7 @@ fn extract_ipld_inner(
                             Some(parent.clone()),
                             file_output.as_mut(),
                         )?;
-                    };
+                    }
                 }
                 _ => unimplemented!("not implement"),
             };

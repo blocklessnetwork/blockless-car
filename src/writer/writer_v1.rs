@@ -60,7 +60,9 @@ where
 
     fn rewrite_header(&mut self, header: CarHeader) -> Result<(), CarError> {
         if header.roots().len() != self.header.roots().len() {
-            return Err(CarError::InvalidSection("the root cid is not match.".to_string()))
+            return Err(CarError::InvalidSection(
+                "the root cid is not match.".to_string(),
+            ));
         }
         self.header = header;
         self.inner.seek(std::io::SeekFrom::Start(0));
@@ -70,7 +72,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use std::io::{Cursor, BufWriter};
+    use std::io::{BufWriter, Cursor};
 
     use ipld_cbor::DagCborCodec;
 
