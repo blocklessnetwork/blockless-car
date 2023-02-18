@@ -1,4 +1,5 @@
 use cid::Cid;
+use ipld::raw::RawCodec;
 
 mod reader_v1;
 use crate::{error::CarError, header::CarHeader, section::Section, unixfs::UnixFs, Ipld};
@@ -77,7 +78,12 @@ pub trait CarReader {
         searchq: &mut VecDeque<Cid>,
         f: &str,
     ) -> Result<Cid, CarError> {
+        let raw_code: u64 = RawCodec.into();
         while let Some(root_cid) = searchq.pop_front() {
+            let codec = root_cid.codec();
+            if codec == raw_code {
+                continue;
+            }
             let fs_ipld = self.ipld(&root_cid)?;
             if matches!(fs_ipld, Ipld::Map(_)) {
                 let unixfs: UnixFs = (root_cid, fs_ipld).try_into()?;
