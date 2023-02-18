@@ -57,8 +57,6 @@ where
                 _ => unreachable!("not support!"),
             }
         }
-        println!("{abs_path:?}");
-        println!("{unixfs:?}");
         let fs_ipld: Ipld = unixfs.encode()?;
         
         let bs = DagPbCodec
@@ -81,7 +79,6 @@ where
                         .iter_mut()
                         .filter(|f| matches!(f.file_type, FileType::Directory))
                         .collect();
-                    println!("|||| dirs:{dirs:?} {cid:?}");
                     if let Ok(pos) = dirs.binary_search_by(|u| {
                         let filen = u.file_name.as_ref().map(String::as_str);
                         filen.cmp(&file_name)
@@ -89,11 +86,9 @@ where
                         dirs[pos].cid = Some(cid);
                     }
                 });
-                println!("{parent:?}");
             }
             None => unimplemented!("should not happend"),
         }
-        println!("--");
         Ok(())
     })?;
     let root_cid = root_cid.ok_or(CarError::NotFound("root cid not found.".to_string()))?;
