@@ -161,14 +161,3 @@ where
     Ok(())
 }
 
-mod test {
-    #[allow(unused)]
-    use super::*;
-
-    #[test]
-    fn test_walk_dir() {
-        let current = std::env::current_dir().unwrap();
-        let pwd = current.join("test");
-        let _rootcid = walk_dir(pwd, |path, ufs| Ok(()));
-    }
-}
