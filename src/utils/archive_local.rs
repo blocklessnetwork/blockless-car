@@ -1,5 +1,5 @@
 use std::{
-    collections::{BinaryHeap, HashMap, VecDeque},
+    collections::{HashMap, VecDeque},
     fs,
     io::{self, Read},
     path::{Path, PathBuf},
@@ -38,8 +38,8 @@ where
     let header = CarHeader::V1(CarHeaderV1::new(vec![root_cid.unwrap()]));
     let mut writer = CarWriterV1::new(to_carfile, header);
     walk_dir(path, |abs_path, path_map| -> Result<(), CarError> {
+        
         let unixfs = path_map.get_mut(abs_path).unwrap();
-
         for ufs in unixfs.children.iter_mut() {
             match ufs.file_type {
                 FileType::Directory => {}
@@ -57,7 +57,10 @@ where
                 _ => unreachable!("not support!"),
             }
         }
+        println!("{abs_path:?}");
+        println!("{unixfs:?}");
         let fs_ipld: Ipld = unixfs.encode()?;
+        
         let bs = DagPbCodec
             .encode(&fs_ipld)
             .map_err(|e| CarError::Parsing(e.to_string()))?;
@@ -73,21 +76,24 @@ where
             Some(parent) => {
                 let parent = Rc::new(parent.to_path_buf());
                 path_map.get_mut(&parent).map(|p| {
-                    let dirs: Vec<_> = p
+                    let mut dirs: Vec<_> = p
                         .children
                         .iter_mut()
                         .filter(|f| matches!(f.file_type, FileType::Directory))
                         .collect();
+                    println!("|||| dirs:{dirs:?} {cid:?}");
                     if let Ok(pos) = dirs.binary_search_by(|u| {
                         let filen = u.file_name.as_ref().map(String::as_str);
                         filen.cmp(&file_name)
                     }) {
-                        p.children[pos].cid = Some(cid);
+                        dirs[pos].cid = Some(cid);
                     }
                 });
+                println!("{parent:?}");
             }
             None => unimplemented!("should not happend"),
         }
+        println!("--");
         Ok(())
     })?;
     let root_cid = root_cid.ok_or(CarError::NotFound("root cid not found.".to_string()))?;
@@ -108,14 +114,17 @@ fn raw_cid(data: &[u8]) -> Cid {
 }
 
 fn walk_inner<'a>(
-    dir_queue: &mut VecDeque<PathBuf>,
+    dir_queue: &mut VecDeque<Rc<PathBuf>>,
     path_map: &'a mut HashMap<Rc<PathBuf>, UnixFs>,
-) -> Result<(), CarError> {
+) -> Result<Vec<Rc<PathBuf>>, CarError>
+{
+    let mut dirs = Vec::new();
     while dir_queue.len() > 0 {
-        let parent = dir_queue.pop_back().unwrap();
+        let dir_path = dir_queue.pop_back().unwrap();
+        dirs.push(dir_path.clone());
         let mut unix_dir = UnixFs::default();
         unix_dir.file_type = FileType::Directory;
-        for entry in fs::read_dir(&*parent)? {
+        for entry in fs::read_dir(&*dir_path)? {
             let entry = entry?;
             let file_type = entry.file_type()?;
             let file_path = entry.path();
@@ -129,14 +138,16 @@ fn walk_inner<'a>(
             }
             if file_type.is_dir() {
                 unixfile.file_type = FileType::Directory;
-                dir_queue.push_back(abs_path);
+                let rc_abs_path = Rc::new(abs_path);
+                dir_queue.push_back(rc_abs_path);
             }
             unix_dir.add_child(unixfile);
             //skip other types.
         }
-        path_map.insert(Rc::new(parent), unix_dir);
+        path_map.insert(dir_path, unix_dir);
     }
-    Ok(())
+    dirs.reverse();
+    Ok(dirs)
 }
 
 pub fn walk_dir<T>(root: impl AsRef<Path>, mut walker: T) -> Result<(), CarError>
@@ -146,12 +157,9 @@ where
     let src_path = root.as_ref().absolutize()?;
     let mut queue = VecDeque::new();
     let mut path_map: HashMap<Rc<PathBuf>, UnixFs> = HashMap::new();
-    let root_path: PathBuf = src_path.into();
+    let root_path: Rc<PathBuf> = Rc::new(src_path.into());
     queue.push_back(root_path.clone());
-    walk_inner(&mut queue, &mut path_map)?;
-    let keys: BinaryHeap<Rc<PathBuf>> = path_map.keys().map(Rc::clone).collect();
-    let mut keys = keys.into_sorted_vec();
-    keys.reverse();
+    let keys = walk_inner(&mut queue, &mut path_map)?;
     for key in keys.iter() {
         walker(key, &mut path_map)?;
     }
