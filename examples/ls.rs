@@ -23,9 +23,12 @@ fn walk(vecq: &mut VecDeque<Cid>, reader: &mut impl CarReader) {
                 let unixfs: UnixFs = m.try_into().unwrap();
                 for n in unixfs.children().into_iter() {
                     let cid = n.cid().unwrap();
-                    vecq.push_back(cid);
+                    
                     n.file_name().map(|f| {
-                        cache.insert(cid, file_n.clone() + "/" + f);
+                        if f.len() > 0 {
+                            cache.insert(cid, file_n.clone() + "/" + f);
+                            vecq.push_back(cid);
+                        }
                     });
                 }
             }
