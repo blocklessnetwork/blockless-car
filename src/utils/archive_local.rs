@@ -21,6 +21,12 @@ use cid::{
 use ipld::{pb::DagPbCodec, prelude::Codec, raw::RawCodec};
 use path_absolutize::*;
 
+
+type WalkPath = (Rc<PathBuf>, Option<usize>);
+
+type WalkPathCache = HashMap<Rc<PathBuf>, UnixFs>;
+
+
 /// archive the directory to the target CAR format file
 /// `path` is the directory archived in to the CAR file.
 /// `to_carfile` is the target file.
@@ -98,8 +104,8 @@ fn raw_cid(data: &[u8]) -> Cid {
 
 fn walk_inner<'a>(
     dir_queue: &mut VecDeque<Rc<PathBuf>>,
-    path_map: &'a mut HashMap<Rc<PathBuf>, UnixFs>,
-) -> Result<Vec<(Rc<PathBuf>, Option<usize>)>, CarError>
+    path_map: &'a mut WalkPathCache,
+) -> Result<Vec<WalkPath>, CarError>
 {
     let mut dirs = Vec::new();
     while let Some(dir_path) = dir_queue.pop_back() {
@@ -134,7 +140,7 @@ fn walk_inner<'a>(
 
 pub fn walk_dir<T>(root: impl AsRef<Path>, mut walker: T) -> Result<(), CarError>
 where
-    T: FnMut(&(Rc<PathBuf>, Option<usize>), &mut HashMap<Rc<PathBuf>, UnixFs>) -> Result<(), CarError>,
+    T: FnMut(&WalkPath, &mut WalkPathCache) -> Result<(), CarError>,
 {
     let src_path = root.as_ref().absolutize()?;
     let mut queue = VecDeque::new();
@@ -148,4 +154,3 @@ where
     }
     Ok(())
 }
-
