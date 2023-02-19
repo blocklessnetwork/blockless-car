@@ -128,8 +128,10 @@ impl UnixFs {
     }
 
     #[inline(always)]
-    pub fn add_child(&mut self, child: UnixFs) {
+    pub fn add_child(&mut self, child: UnixFs) -> usize {
+        let idx = self.children.len();
         self.children.push(child);
+        idx
     }
 
     #[inline(always)]
