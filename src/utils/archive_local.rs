@@ -102,9 +102,9 @@ fn raw_cid(data: &[u8]) -> Cid {
     Cid::new_v1(RawCodec.into(), h)
 }
 
-fn walk_inner<'a>(
+fn walk_inner(
     dir_queue: &mut VecDeque<Rc<PathBuf>>,
-    path_map: &'a mut WalkPathCache,
+    path_map: &mut WalkPathCache,
 ) -> Result<Vec<WalkPath>, CarError>
 {
     let mut dirs = Vec::new();
