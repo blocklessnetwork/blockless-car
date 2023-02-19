@@ -21,11 +21,9 @@ use cid::{
 use ipld::{pb::DagPbCodec, prelude::Codec, raw::RawCodec};
 use path_absolutize::*;
 
-
 type WalkPath = (Rc<PathBuf>, Option<usize>);
 
 type WalkPathCache = HashMap<Rc<PathBuf>, UnixFs>;
-
 
 /// archive the directory to the target CAR format file
 /// `path` is the directory archived in to the CAR file.
@@ -43,48 +41,51 @@ where
     let mut root_cid = Some(pb_cid(b""));
     let header = CarHeader::V1(CarHeaderV1::new(vec![root_cid.unwrap()]));
     let mut writer = CarWriterV1::new(to_carfile, header);
-    walk_dir(path, |(abs_path, parent_idx), path_map| -> Result<(), CarError> {
-        let unixfs = path_map.get_mut(abs_path).unwrap();
-        for ufs in unixfs.children.iter_mut() {
-            match ufs.file_type {
-                FileType::Directory => {}
-                FileType::File => {
-                    //TODO: split file
-                    let filepath = abs_path.join(ufs.file_name.as_ref().unwrap());
-                    let mut file = fs::OpenOptions::new().read(true).open(filepath)?;
+    walk_dir(
+        path,
+        |(abs_path, parent_idx), path_map| -> Result<(), CarError> {
+            let unixfs = path_map.get_mut(abs_path).unwrap();
+            for ufs in unixfs.children.iter_mut() {
+                match ufs.file_type {
+                    FileType::Directory => {}
+                    FileType::File => {
+                        //TODO: split file
+                        let filepath = abs_path.join(ufs.file_name.as_ref().unwrap());
+                        let mut file = fs::OpenOptions::new().read(true).open(filepath)?;
 
-                    let mut buf = Vec::<u8>::new();
-                    file.read_to_end(&mut buf)?;
-                    let file_cid = raw_cid(&buf);
-                    writer.write(file_cid, &buf)?;
-                    ufs.cid = Some(file_cid);
+                        let mut buf = Vec::<u8>::new();
+                        file.read_to_end(&mut buf)?;
+                        let file_cid = raw_cid(&buf);
+                        writer.write(file_cid, &buf)?;
+                        ufs.cid = Some(file_cid);
+                    }
+                    _ => unreachable!("not support!"),
                 }
-                _ => unreachable!("not support!"),
             }
-        }
-        let fs_ipld: Ipld = unixfs.encode()?;
-        let bs = DagPbCodec
-            .encode(&fs_ipld)
-            .map_err(|e| CarError::Parsing(e.to_string()))?;
-        let cid = pb_cid(&bs);
+            let fs_ipld: Ipld = unixfs.encode()?;
+            let bs = DagPbCodec
+                .encode(&fs_ipld)
+                .map_err(|e| CarError::Parsing(e.to_string()))?;
+            let cid = pb_cid(&bs);
 
-        if root_path.as_ref() == abs_path.as_ref() {
-            root_cid = Some(cid);
-        }
-        writer.write(cid, bs)?;
-        unixfs.cid = Some(cid);
-        match abs_path.parent() {
-            Some(parent) => {
-                let parent = Rc::new(parent.to_path_buf());
-                
-                path_map.get_mut(&parent).zip(*parent_idx).map(|(p, pos)| {
-                    p.children[pos].cid = Some(cid);
-                });
+            if root_path.as_ref() == abs_path.as_ref() {
+                root_cid = Some(cid);
             }
-            None => unimplemented!("should not happend"),
-        }
-        Ok(())
-    })?;
+            writer.write(cid, bs)?;
+            unixfs.cid = Some(cid);
+            match abs_path.parent() {
+                Some(parent) => {
+                    let parent = Rc::new(parent.to_path_buf());
+
+                    path_map.get_mut(&parent).zip(*parent_idx).map(|(p, pos)| {
+                        p.children[pos].cid = Some(cid);
+                    });
+                }
+                None => unimplemented!("should not happend"),
+            }
+            Ok(())
+        },
+    )?;
     let root_cid = root_cid.ok_or(CarError::NotFound("root cid not found.".to_string()))?;
     let header = CarHeader::V1(CarHeaderV1::new(vec![root_cid]));
     writer.rewrite_header(header)
@@ -102,11 +103,10 @@ fn raw_cid(data: &[u8]) -> Cid {
     Cid::new_v1(RawCodec.into(), h)
 }
 
-fn walk_inner<'a>(
+fn walk_inner(
     dir_queue: &mut VecDeque<Rc<PathBuf>>,
-    path_map: &'a mut WalkPathCache,
-) -> Result<Vec<WalkPath>, CarError>
-{
+    path_map: &mut WalkPathCache,
+) -> Result<Vec<WalkPath>, CarError> {
     let mut dirs = Vec::new();
     while let Some(dir_path) = dir_queue.pop_back() {
         let mut unix_dir = UnixFs::default();
