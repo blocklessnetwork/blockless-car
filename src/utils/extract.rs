@@ -74,19 +74,20 @@ fn extract_ipld_inner(
     let mut queue = VecDeque::<Cid>::new();
     let mut unixfs_cache: HashMap<Cid, UnixfsCache> = Default::default();
     let mut relations: HashMap<Cid, IndexRelation> = Default::default();
-    let rel = relations.get(&cid);
-    let full_path = IndexRelation::full_path(rel, &unixfs_cache)
-        .unwrap_or_else(||
-            match parent {
-                Some(p) => {
-                    let cid_path: PathBuf = cid.to_string().into();
-                    p.join(cid_path)
-                },
-                None => cid.to_string().into(),
-            }
-        );
     queue.push_back(cid);
+    let root_path = match parent {
+        Some(ref p) => {
+            let cid_path: PathBuf = cid.to_string().into();
+            p.join(cid_path)
+        },
+        None => cid.to_string().into(),
+    };
     while let Some(cid) = queue.pop_front() {
+        let rel = relations.get(&cid);
+        let full_path = match IndexRelation::full_path(rel, &unixfs_cache) {
+            Some(f) => f,
+            None => root_path.clone(),
+        };
         let file_ipld: Ipld = reader.ipld(&cid).unwrap();
         let file_link = match file_ipld {
             Ipld::Bytes(b) => {
