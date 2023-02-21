@@ -4,7 +4,7 @@ use cid::Cid;
 use ipld::raw::RawCodec;
 use rust_car::Ipld;
 use rust_car::reader::{self, CarReader};
-use rust_car::unixfs::UnixFs;
+use rust_car::unixfs::{UnixFs, FileType};
 
 /// walk the node and print the files in the directory.
 fn walk(vecq: &mut VecDeque<Cid>, reader: &mut impl CarReader) {
@@ -21,14 +21,15 @@ fn walk(vecq: &mut VecDeque<Cid>, reader: &mut impl CarReader) {
         match file_ipld {
             m @ Ipld::Map(_) => {
                 let unixfs: UnixFs = m.try_into().unwrap();
+                match unixfs.file_type() {
+                    FileType::Directory => {},
+                    _=> continue,
+                }
                 for n in unixfs.children().into_iter() {
                     let cid = n.cid().unwrap();
-                    
                     n.file_name().map(|f| {
-                        if f.len() > 0 {
-                            cache.insert(cid, file_n.clone() + "/" + f);
-                            vecq.push_back(cid);
-                        }
+                        cache.insert(cid, file_n.clone() + "/" + f);
+                        vecq.push_back(cid);
                     });
                 }
             }
@@ -42,8 +43,8 @@ fn walk(vecq: &mut VecDeque<Cid>, reader: &mut impl CarReader) {
 fn main() {
     let file_name = std::env::args().nth(1);
     let path = file_name.as_ref().map(|f| f.into()).unwrap_or_else(|| {
-        let file = std::path::Path::new(".");
-        file.join("111.car")
+        let file = std::path::Path::new("test");
+        file.join("carv1-basic.car")
     });
     let file = std::fs::File::open(path).unwrap();
     let mut reader = reader::new_v1(file).unwrap();

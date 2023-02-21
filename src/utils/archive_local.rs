@@ -38,6 +38,7 @@ where
     }
     let root_path = src_path.absolutize().unwrap();
     let path = root_path.to_path_buf();
+    // ensure sufficient file block size for head, after the root cid generated using the content, fill back the head.
     let mut root_cid = Some(pb_cid(b""));
     let header = CarHeader::V1(CarHeaderV1::new(vec![root_cid.unwrap()]));
     let mut writer = CarWriterV1::new(to_carfile, header);
@@ -49,7 +50,7 @@ where
                 match ufs.file_type {
                     FileType::Directory => {}
                     FileType::File => {
-                        //TODO: split file
+                        //TODO: split file when file size is bigger than the max section size.
                         let filepath = abs_path.join(ufs.file_name.as_ref().unwrap());
                         let mut file = fs::OpenOptions::new().read(true).open(filepath)?;
 
@@ -103,6 +104,9 @@ fn raw_cid(data: &[u8]) -> Cid {
     Cid::new_v1(RawCodec.into(), h)
 }
 
+/// walk all directory, and record the directory informations.
+/// `dir_queue` is the dir queue for hold the directory.
+/// `WalkPath` contain the index in children.
 fn walk_inner(
     dir_queue: &mut VecDeque<Rc<PathBuf>>,
     path_map: &mut WalkPathCache,
