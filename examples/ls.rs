@@ -25,12 +25,10 @@ fn walk(vecq: &mut VecDeque<Cid>, reader: &mut impl CarReader) {
                     FileType::Directory => {},
                     _=> continue,
                 }
-                for n in unixfs.children().into_iter() {
-                    let cid = n.cid().unwrap();
-                    n.file_name().map(|f| {
-                        cache.insert(cid, file_n.clone() + "/" + f);
-                        vecq.push_back(cid);
-                    });
+                for n in unixfs.links().into_iter() {
+                    let cid = n.hash();
+                    cache.insert(cid, file_n.clone() + "/" + n.name_ref());
+                    vecq.push_back(cid);
                 }
             }
             _ => {}

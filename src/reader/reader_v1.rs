@@ -85,7 +85,7 @@ mod test {
             let unix_fs: Result<UnixFs, CarError> = s_ipld.try_into();
             assert!(unix_fs.is_ok());
             unix_fs.map(|fs| {
-                assert_eq!(fs.children.len(), 3);
+                assert_eq!(fs.links.len(), 3);
             });
         }
         let rs = reader.search_file_cid("not-distributed.jpg");

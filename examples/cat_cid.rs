@@ -23,9 +23,9 @@ fn main() {
         let root: Result<UnixFs, CarError> = root_ipld.try_into();
         let root_dir = root.unwrap();
         let count = root_dir
-            .children()
+            .links()
             .iter()
-            .filter(|u| u.cid().unwrap() == file_cid)
+            .filter(|u| u.hash() == file_cid)
             .count();
         if count > 0 {
             cat_ipld(&mut reader, file_cid).unwrap();
