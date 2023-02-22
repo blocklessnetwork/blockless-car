@@ -11,9 +11,9 @@ pub(crate) struct CarWriterV1<W> {
 
 impl<W> CarWriterV1<W>
 where
-    W: std::io::Write,
+    W: std::io::Write + std::io::Seek,
 {
-    fn write_header(&mut self) -> Result<(), CarError> {
+    fn write_head(&mut self) -> Result<(), CarError> {
         let head = self.header.encode()?;
         self.inner.write_varint(head.len())?;
         self.inner.write_all(&head)?;
@@ -32,14 +32,14 @@ where
 
 impl<W> CarWriter for CarWriterV1<W>
 where
-    W: std::io::Write,
+    W: std::io::Write + std::io::Seek,
 {
     fn write<T>(&mut self, cid_data: cid::Cid, data: T) -> Result<(), CarError>
     where
         T: AsRef<[u8]>,
     {
         if !self.is_header_written {
-            self.write_header()?;
+            self.write_head()?;
         }
         let mut cid_buff: Vec<u8> = Vec::new();
         cid_data
@@ -57,11 +57,22 @@ where
         self.inner.flush()?;
         Ok(())
     }
+
+    fn rewrite_header(&mut self, header: CarHeader) -> Result<(), CarError> {
+        if header.roots().len() != self.header.roots().len() {
+            return Err(CarError::InvalidSection(
+                "the root cid is not match.".to_string(),
+            ));
+        }
+        self.header = header;
+        self.inner.seek(std::io::SeekFrom::Start(0));
+        self.write_head()
+    }
 }
 
 #[cfg(test)]
 mod test {
-    use std::io::Cursor;
+    use std::io::{BufWriter, Cursor};
 
     use ipld_cbor::DagCborCodec;
 
@@ -80,7 +91,8 @@ mod test {
         let cid_test2 = Cid::new_v1(DagCborCodec.into(), digest_test2);
         let header = CarHeader::V1(CarHeaderV1::new(vec![cid_test2]));
         let mut buffer = Vec::new();
-        let mut writer = CarWriterV1::new(&mut buffer, header);
+        let mut buf = Cursor::new(&mut buffer);
+        let mut writer = CarWriterV1::new(&mut buf, header);
         writer.write(cid_test1, b"test1").unwrap();
         writer.write(cid_test2, b"test2").unwrap();
         writer.flush().unwrap();

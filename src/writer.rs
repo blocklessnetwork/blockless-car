@@ -10,12 +10,14 @@ pub trait CarWriter {
     where
         T: AsRef<[u8]>;
 
+    fn rewrite_header(&mut self, header: CarHeader) -> Result<(), CarError>;
+
     fn flush(&mut self) -> Result<(), CarError>;
 }
 
 pub fn new_v1<W>(inner: W, header: CarHeader) -> Result<impl CarWriter, CarError>
 where
-    W: std::io::Write,
+    W: std::io::Write + std::io::Seek,
 {
     Ok(CarWriterV1::new(inner, header))
 }

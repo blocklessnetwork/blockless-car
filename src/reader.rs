@@ -1,9 +1,13 @@
 use cid::Cid;
+use ipld::raw::RawCodec;
 
 mod reader_v1;
 use crate::{error::CarError, header::CarHeader, section::Section, unixfs::UnixFs, Ipld};
 use integer_encoding::VarIntReader;
-use std::io::{self, Read, Seek};
+use std::{
+    collections::VecDeque,
+    io::{self, Read, Seek},
+};
 
 pub(crate) use reader_v1::CarReaderV1;
 
@@ -26,9 +30,7 @@ where
         return Err(CarError::TooLargeSection(l));
     }
     let mut data = vec![0u8; l];
-    reader
-        .read_exact(&mut data[..])
-        .map_err(|e| CarError::IO(e))?;
+    reader.read_exact(&mut data[..])?;
     Ok(Some(data))
 }
 
@@ -45,16 +47,14 @@ where
             return Err(CarError::IO(e));
         }
     };
-    let start = reader.stream_position().map_err(|e| CarError::IO(e))?;
+    let start = reader.stream_position()?;
     if len > MAX_ALLOWED_SECTION_SIZE {
         return Err(CarError::TooLargeSection(len));
     }
     let cid = Cid::read_bytes(&mut reader).map_err(|e| CarError::Parsing(e.to_string()))?;
-    let pos = reader.stream_position().map_err(|e| CarError::IO(e))?;
+    let pos = reader.stream_position()?;
     let l = len - ((pos - start) as usize);
-    reader
-        .seek(io::SeekFrom::Current(l as _))
-        .map_err(|e| CarError::IO(e))?;
+    reader.seek(io::SeekFrom::Current(l as _))?;
     Ok(Some(Section::new(cid, pos, l)))
 }
 
@@ -73,20 +73,44 @@ pub trait CarReader {
         (*cid, fs_ipld).try_into()
     }
 
-    #[inline]
-    fn search_file_cid(&mut self, f: &str) -> Result<Cid, CarError> {
-        let roots = self.header().roots();
-        for root in roots.into_iter() {
-            let unixfs = self.unixfs(&root)?;
-            for ufs in unixfs.children() {
-                if let Some(file_name) = ufs.file_name() {
-                    if file_name == f {
-                        return Ok(root)
+    fn search_file_cid_inner(
+        &mut self,
+        searchq: &mut VecDeque<Cid>,
+        f: &str,
+    ) -> Result<Cid, CarError> {
+        let raw_code: u64 = RawCodec.into();
+        while let Some(root_cid) = searchq.pop_front() {
+            let codec = root_cid.codec();
+            if codec == raw_code {
+                continue;
+            }
+            let fs_ipld = self.ipld(&root_cid)?;
+            if matches!(fs_ipld, Ipld::Map(_)) {
+                let unixfs: UnixFs = (root_cid, fs_ipld).try_into()?;
+                for ufs in unixfs.links() {
+                    if ufs.name_ref() == f {
+                        return Ok(ufs.hash);
                     }
+                    searchq.push_back(ufs.hash);
                 }
             }
         }
-        Err(CarError::InvalidFile(format!("search {f} fail.")))
+        Err(CarError::NotFound(format!("search {f} fail.")))
+    }
+
+    #[inline]
+    fn search_file_cid(&mut self, f: &str) -> Result<Cid, CarError> {
+        let roots = self.header().roots();
+        let mut searchq = VecDeque::new();
+        for root in roots.into_iter() {
+            searchq.push_back(root);
+            match self.search_file_cid_inner(&mut searchq, f) {
+                Ok(o) => return Ok(o),
+                Err(CarError::NotFound(_)) => continue,
+                Err(e) => return Err(e),
+            }
+        }
+        Err(CarError::NotFound(format!("search {f} fail.")))
     }
 }
 

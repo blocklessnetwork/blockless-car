@@ -61,7 +61,7 @@ where
         let s = self
             .sections
             .get_mut(cid)
-            .ok_or(CarError::InvalidSection("cid not exist".into()))?;
+            .ok_or(CarError::NotFound("cid not exist".into()))?;
         s.ipld(&mut self.inner)
     }
 }
@@ -85,8 +85,10 @@ mod test {
             let unix_fs: Result<UnixFs, CarError> = s_ipld.try_into();
             assert!(unix_fs.is_ok());
             unix_fs.map(|fs| {
-                assert_eq!(fs.children.len(), 3);
+                assert_eq!(fs.links.len(), 3);
             });
         }
+        let rs = reader.search_file_cid("not-distributed.jpg");
+        println!("{rs:?}");
     }
 }

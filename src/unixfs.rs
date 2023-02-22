@@ -50,6 +50,19 @@ impl From<DataType> for FileType {
     }
 }
 
+impl From<FileType> for DataType {
+    fn from(value: FileType) -> Self {
+        match value {
+            FileType::Raw => DataType::Raw,
+            FileType::Directory => DataType::Directory,
+            FileType::File => DataType::File,
+            FileType::Metadata => DataType::Metadata,
+            FileType::Symlink => DataType::Symlink,
+            FileType::HAMTShard => DataType::HAMTShard,
+        }
+    }
+}
+
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub struct UnixTime {
@@ -66,6 +79,15 @@ impl From<pb::unixfs::UnixTime> for UnixTime {
     }
 }
 
+impl From<UnixTime> for pb::unixfs::UnixTime {
+    fn from(value: UnixTime) -> Self {
+        Self {
+            Seconds: value.seconds,
+            FractionalNanoseconds: value.fractional_nanoseconds,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct UnixFs {
     pub(crate) cid: Option<Cid>,
@@ -75,9 +97,50 @@ pub struct UnixFs {
     pub(crate) block_sizes: Vec<u64>,
     pub(crate) file_size: Option<u64>,
     pub(crate) hash_type: Option<u64>,
-    pub(crate) children: Vec<UnixFs>,
+    pub(crate) links: Vec<Link>,
     pub(crate) mtime: Option<UnixTime>,
     pub(crate) file_name: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
+pub struct Link {
+    pub(crate) hash: Cid,
+    pub(crate) guess_type: FileType,
+    pub(crate) name: String,
+    pub(crate) tsize: u64,
+}
+
+impl Link {
+
+    pub fn new(hash: Cid, name: String, tsize: u64) -> Self {
+        Self {
+            hash,
+            name,
+            tsize,
+            guess_type: FileType::Raw,
+        }
+    }
+
+    #[inline(always)]
+    pub fn hash(&self) -> Cid {
+        self.hash
+    }
+
+    #[inline(always)]
+    pub fn name_ref(&self) -> &str {
+        &self.name
+    }
+
+    #[inline(always)]
+    pub fn tsize(&self) -> u64 {
+        self.tsize
+    }
+
+    #[inline(always)]
+    pub fn guess_type(&self) -> FileType {
+        self.guess_type
+    }
+
 }
 
 impl<'a> From<Data<'a>> for UnixFs {
@@ -92,7 +155,7 @@ impl<'a> From<Data<'a>> for UnixFs {
             fanout: value.fanout,
             mode: value.mode,
             mtime: value.mtime.map(|t| t.into()),
-            children: Default::default(),
+            links: Default::default(),
         }
     }
 }
@@ -106,13 +169,15 @@ impl UnixFs {
     }
 
     #[inline(always)]
-    pub fn add_child(&mut self, child: UnixFs) {
-        self.children.push(child);
+    pub fn add_link(&mut self, child: Link) -> usize {
+        let idx = self.links.len();
+        self.links.push(child);
+        idx
     }
 
     #[inline(always)]
-    pub fn children(&self) -> Vec<&UnixFs> {
-        self.children.iter().collect()
+    pub fn links(&self) -> Vec<&Link> {
+        self.links.iter().collect()
     }
 
     #[inline(always)]

@@ -1,7 +1,15 @@
-use cid::Cid;
-use quick_protobuf::{BytesReader, MessageRead};
+use std::collections::BTreeMap;
 
-use crate::{error::CarError, pb::unixfs::Data, unixfs::UnixFs, Decoder, Ipld};
+use cid::Cid;
+use quick_protobuf::{BytesReader, MessageRead, MessageWrite, Writer};
+
+use crate::{
+    codec::Encoder,
+    error::CarError,
+    pb::unixfs::Data,
+    unixfs::{FileType, UnixFs, Link},
+    Decoder, Ipld,
+};
 
 impl Decoder<UnixFs> for Ipld {
     fn decode(&self) -> Result<UnixFs, CarError> {
@@ -24,19 +32,16 @@ impl Decoder<UnixFs> for Ipld {
                                 return;
                             };
                             let name = if let Some(ipld::Ipld::String(name)) = m.get("Name") {
-                                Some(name.clone())
+                                name.clone()
                             } else {
-                                None
+                                String::new()
                             };
                             let size = if let Some(ipld::Ipld::Integer(size)) = m.get("Tsize") {
-                                Some(*size as u64)
+                                *size as u64
                             } else {
-                                None
+                                0
                             };
-                            let mut child = UnixFs::new(cid);
-                            child.file_name = name;
-                            child.file_size = size;
-                            unix_fs.add_child(child);
+                            unix_fs.add_link(Link::new(cid, name, size));
                         }
                         _ => {}
                     });
@@ -64,5 +69,55 @@ impl TryFrom<(Cid, Ipld)> for UnixFs {
             v.cid = Some(value.0);
             v
         })
+    }
+}
+
+fn convert_to_ipld(value: &Link) -> Result<Ipld, CarError> {
+    let mut map: BTreeMap<String, Ipld> = BTreeMap::new();
+    map.insert("Hash".to_string(), Ipld::Link(value.hash));
+    let file_name: Ipld = Ipld::String(
+        value.name_ref().into()
+    );
+    let tsize = Ipld::Integer(value.tsize as i128);
+    map.insert("Name".to_string(), file_name);
+    map.insert("Tsize".to_string(), tsize);
+    Ok(Ipld::Map(map))
+}
+
+impl Encoder<Ipld> for UnixFs {
+    fn encode(&self) -> Result<Ipld, CarError> {
+        match self.file_type {
+            FileType::Directory | FileType::File => {
+                let mut map = BTreeMap::new();
+                let mut data = Data::default();
+                data.Type = self.file_type.into();
+                data.fanout = self.fanout;
+                data.blocksizes = self.block_sizes.clone();
+                data.mode = self.mode;
+                data.filesize = self.file_size;
+                data.hashType = self.hash_type;
+                data.mtime = self.mtime().map(|s| s.clone().into());
+                let mut buf: Vec<u8> = Vec::new();
+                let mut bw = Writer::new(&mut buf);
+                data.write_message(&mut bw)
+                    .map_err(|e| CarError::Parsing(e.to_string()))?;
+                map.insert("Data".into(), Ipld::Bytes(buf));
+                let mut children_ipld: Vec<Ipld> = Vec::new();
+                for child in self.links.iter() {
+                    children_ipld.push(convert_to_ipld(child)?);
+                }
+                map.insert("Links".to_string(), Ipld::List(children_ipld));
+                Ok(Ipld::Map(map))
+            }
+            _ => Err(CarError::Parsing("Not support unixfs format".into())),
+        }
+    }
+}
+
+impl TryFrom<UnixFs> for Ipld {
+    type Error = CarError;
+
+    fn try_from(value: UnixFs) -> Result<Self, Self::Error> {
+        value.encode()
     }
 }
