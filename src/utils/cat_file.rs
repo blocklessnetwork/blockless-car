@@ -12,6 +12,20 @@ use crate::{error::CarError, reader::CarReader, unixfs::UnixFs, Ipld};
 /// `output` is the out the file write to.
 pub fn ipld_write(
     reader: &mut impl CarReader,
+    cid: Cid,
+    output: &mut impl Write,
+) -> Result<(), CarError> 
+{
+    let mut vecq = VecDeque::new();
+    vecq.push_back(cid);
+    ipld_write_inner(reader, &mut vecq, output)
+}
+
+/// write ipld to output
+/// `file_cid` is the file cid to write
+/// `output` is the out the file write to.
+fn ipld_write_inner(
+    reader: &mut impl CarReader,
     vecq: &mut VecDeque<Cid>,
     output: &mut impl Write,
 ) -> Result<(), CarError> {
@@ -39,5 +53,5 @@ pub fn cat_ipld(reader: &mut impl CarReader, file_cid: Cid) -> Result<(), CarErr
     let mut stdout = io::stdout();
     let mut vecq = VecDeque::new();
     vecq.push_back(file_cid);
-    ipld_write(reader, &mut vecq, &mut stdout)
+    ipld_write_inner(reader, &mut vecq, &mut stdout)
 }
