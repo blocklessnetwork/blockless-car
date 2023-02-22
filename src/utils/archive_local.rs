@@ -10,7 +10,7 @@ use crate::{
     codec::Encoder,
     error::CarError,
     header::CarHeaderV1,
-    unixfs::{FileType, UnixFs},
+    unixfs::{FileType, UnixFs, Link},
     writer::{CarWriter, CarWriterV1},
     CarHeader, Ipld,
 };
@@ -46,19 +46,19 @@ where
         path,
         |(abs_path, parent_idx), path_map| -> Result<(), CarError> {
             let unixfs = path_map.get_mut(abs_path).unwrap();
-            for ufs in unixfs.children.iter_mut() {
-                match ufs.file_type {
+            for link in unixfs.links.iter_mut() {
+                match link.guess_type {
                     FileType::Directory => {}
                     FileType::File => {
                         //TODO: split file when file size is bigger than the max section size.
-                        let filepath = abs_path.join(ufs.file_name.as_ref().unwrap());
+                        let filepath = abs_path.join(link.name_ref());
                         let mut file = fs::OpenOptions::new().read(true).open(filepath)?;
 
                         let mut buf = Vec::<u8>::new();
                         file.read_to_end(&mut buf)?;
                         let file_cid = raw_cid(&buf);
                         writer.write(file_cid, &buf)?;
-                        ufs.cid = Some(file_cid);
+                        link.hash = file_cid;
                     }
                     _ => unreachable!("not support!"),
                 }
@@ -79,7 +79,7 @@ where
                     let parent = Rc::new(parent.to_path_buf());
 
                     path_map.get_mut(&parent).zip(*parent_idx).map(|(p, pos)| {
-                        p.children[pos].cid = Some(cid);
+                        p.links[pos].hash = cid;
                     });
                 }
                 None => unimplemented!("should not happend"),
@@ -121,16 +121,16 @@ fn walk_inner(
             let file_path = entry.path();
             let abs_path = file_path.absolutize()?.to_path_buf();
 
-            let mut unixfile = UnixFs::default();
-            unixfile.file_name = entry.file_name().to_str().map(String::from);
-            unixfile.file_size = Some(entry.metadata()?.len());
+            let mut link = Link::default();
+            link.name = entry.file_name().to_str().unwrap_or("").to_string();
+            link.tsize = entry.metadata()?.len();
             if file_type.is_file() {
-                unixfile.file_type = FileType::File;
-                unix_dir.add_child(unixfile);
+                link.guess_type = FileType::File;
+                unix_dir.add_link(link);
             } else if file_type.is_dir() {
                 let rc_abs_path = Rc::new(abs_path);
-                unixfile.file_type = FileType::Directory;
-                let idx = unix_dir.add_child(unixfile);
+                link.guess_type = FileType::Directory;
+                let idx = unix_dir.add_link(link);
                 dirs.push((rc_abs_path.clone(), Some(idx)));
                 dir_queue.push_back(rc_abs_path);
             }

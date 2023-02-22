@@ -87,13 +87,11 @@ pub trait CarReader {
             let fs_ipld = self.ipld(&root_cid)?;
             if matches!(fs_ipld, Ipld::Map(_)) {
                 let unixfs: UnixFs = (root_cid, fs_ipld).try_into()?;
-                for ufs in unixfs.children() {
-                    if let Some(file_name) = ufs.file_name() {
-                        if file_name == f {
-                            return Ok(ufs.cid.unwrap());
-                        }
+                for ufs in unixfs.links() {
+                    if ufs.name_ref() == f {
+                        return Ok(ufs.hash);
                     }
-                    searchq.push_back(ufs.cid.unwrap());
+                    searchq.push_back(ufs.hash);
                 }
             }
         }

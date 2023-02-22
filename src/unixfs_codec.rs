@@ -7,7 +7,7 @@ use crate::{
     codec::Encoder,
     error::CarError,
     pb::unixfs::Data,
-    unixfs::{FileType, UnixFs},
+    unixfs::{FileType, UnixFs, Link},
     Decoder, Ipld,
 };
 
@@ -32,19 +32,16 @@ impl Decoder<UnixFs> for Ipld {
                                 return;
                             };
                             let name = if let Some(ipld::Ipld::String(name)) = m.get("Name") {
-                                Some(name.clone())
+                                name.clone()
                             } else {
-                                None
+                                String::new()
                             };
                             let size = if let Some(ipld::Ipld::Integer(size)) = m.get("Tsize") {
-                                Some(*size as u64)
+                                *size as u64
                             } else {
-                                None
+                                0
                             };
-                            let mut child = UnixFs::new(cid);
-                            child.file_name = name;
-                            child.file_size = size;
-                            unix_fs.add_child(child);
+                            unix_fs.add_link(Link::new(cid, name, size));
                         }
                         _ => {}
                     });
@@ -75,17 +72,13 @@ impl TryFrom<(Cid, Ipld)> for UnixFs {
     }
 }
 
-fn convert_to_ipld(value: &UnixFs) -> Result<Ipld, CarError> {
+fn convert_to_ipld(value: &Link) -> Result<Ipld, CarError> {
     let mut map: BTreeMap<String, Ipld> = BTreeMap::new();
-    map.insert("Hash".to_string(), Ipld::Link(value.cid.unwrap()));
+    map.insert("Hash".to_string(), Ipld::Link(value.hash));
     let file_name: Ipld = Ipld::String(
-        value
-            .file_name
-            .as_ref()
-            .map(|s| s.clone())
-            .unwrap_or(String::new()),
+        value.name_ref().into()
     );
-    let tsize = Ipld::Integer(value.file_size.unwrap_or(0) as i128);
+    let tsize = Ipld::Integer(value.tsize as i128);
     map.insert("Name".to_string(), file_name);
     map.insert("Tsize".to_string(), tsize);
     Ok(Ipld::Map(map))
@@ -110,7 +103,7 @@ impl Encoder<Ipld> for UnixFs {
                     .map_err(|e| CarError::Parsing(e.to_string()))?;
                 map.insert("Data".into(), Ipld::Bytes(buf));
                 let mut children_ipld: Vec<Ipld> = Vec::new();
-                for child in self.children.iter() {
+                for child in self.links.iter() {
                     children_ipld.push(convert_to_ipld(child)?);
                 }
                 map.insert("Links".to_string(), Ipld::List(children_ipld));

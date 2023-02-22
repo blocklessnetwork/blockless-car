@@ -25,8 +25,8 @@ pub fn ipld_write(
             m @ Ipld::Map(_) => {
                 let unix_fs: Result<UnixFs, CarError> = (file_cid, m).try_into();
                 let ufs = unix_fs?;
-                for cufs in ufs.children().iter() {
-                    vecq.push_back(cufs.cid.unwrap());
+                for link in ufs.links().iter() {
+                    vecq.push_back(link.hash);
                 }
             }
             _ => {}

@@ -41,8 +41,7 @@ struct IndexRelation {
 impl IndexRelation {
     fn full_path(rel: Option<&IndexRelation>, cache: &HashMap<Cid, UnixfsCache>) -> Option<PathBuf> {
         let filename = rel.map(|r| cache.get(&r.parent_cid)
-            .map(|f| f.inner.children[r.index].file_name())
-            .flatten()
+            .map(|f| f.inner.links[r.index].name_ref())
         ).flatten();
         let parent_path = rel
             .map(|r| cache
@@ -59,7 +58,7 @@ impl IndexRelation {
 enum Type {
     Directory,
     File,
-    FileLink(UnixFs),
+    FileLinks(UnixFs),
 }
 
 
@@ -89,9 +88,8 @@ fn extract_ipld_inner(
             None => root_path.clone(),
         };
         let file_ipld: Ipld = reader.ipld(&cid).unwrap();
-        let file_link = match file_ipld {
+        let file_links = match file_ipld {
             Ipld::Bytes(b) => {
-                println!("{full_path:?}");
                 let mut file = fs::OpenOptions::new()
                     .create(true)
                     .write(true)
@@ -103,15 +101,15 @@ fn extract_ipld_inner(
             m @ Ipld::Map(_) => {
                 let unixfs: UnixFs = (cid, m).try_into()?;
                 match unixfs.file_type {
-                    FileType::File => Type::FileLink(unixfs),
+                    FileType::File => Type::FileLinks(unixfs),
                     _=> {
-                        for (idx, ufs) in unixfs.children().iter().enumerate() {
+                        for (idx, link) in unixfs.links().iter().enumerate() {
                             let rel = IndexRelation {
                                 parent_cid: cid, 
                                 index: idx,
                             };
-                            queue.push_back(ufs.cid.unwrap());
-                            relations.insert(ufs.cid.unwrap(), rel);
+                            queue.push_back(link.hash);
+                            relations.insert(link.hash, rel);
                         }
                         let rel = relations.get(&cid);
                         let path = IndexRelation::full_path(rel, &unixfs_cache)
@@ -127,15 +125,15 @@ fn extract_ipld_inner(
             _ => unimplemented!("not implement"),
         };
         
-        match file_link {
-            Type::FileLink(f) => {
+        match file_links {
+            Type::FileLinks(f) => {
                 let mut file = fs::OpenOptions::new()
                     .create(true)
                     .write(true)
                     .open(&full_path)
                     .unwrap();  
-                for ufs in f.children() {
-                    let file_ipld: Ipld = reader.ipld(&ufs.cid.unwrap()).unwrap();
+                for ufs in f.links() {
+                    let file_ipld: Ipld = reader.ipld(&ufs.hash).unwrap();
                     match file_ipld {
                         Ipld::Bytes(b) => {
                             file.write_all(&b).unwrap();
