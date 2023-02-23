@@ -21,9 +21,9 @@ impl CarHeader {
     }
 
     pub fn roots(&self) -> Vec<Cid> {
-        match self {
-            &CarHeader::V1(ref v1) => v1.roots.clone(),
-            &CarHeader::V2() => todo!(),
+        match *self {
+            CarHeader::V1(ref v1) => v1.roots.clone(),
+            CarHeader::V2() => todo!(),
         }
     }
 
@@ -56,14 +56,14 @@ impl CarHeader {
     }
 
     pub fn encode(&self) -> Result<Vec<u8>, CarError> {
-        match self {
-            &CarHeader::V1(ref v1) => {
+        match *self {
+            CarHeader::V1(ref v1) => {
                 let data = DagCborCodec
                     .encode(v1)
                     .map_err(|e| CarError::Parsing(e.to_string()))?;
                 Ok(data)
             }
-            &CarHeader::V2() => todo!(),
+            CarHeader::V2() => todo!(),
         }
     }
 }

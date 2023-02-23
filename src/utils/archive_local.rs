@@ -78,9 +78,9 @@ where
                 Some(parent) => {
                     let parent = Rc::new(parent.to_path_buf());
 
-                    path_map.get_mut(&parent).zip(*parent_idx).map(|(p, pos)| {
+                    if let Some((p, pos)) = path_map.get_mut(&parent).zip(*parent_idx) {
                         p.links[pos].hash = cid;
-                    });
+                    }
                 }
                 None => unimplemented!("should not happend"),
             }
@@ -113,17 +113,23 @@ fn walk_inner(
 ) -> Result<Vec<WalkPath>, CarError> {
     let mut dirs = Vec::new();
     while let Some(dir_path) = dir_queue.pop_back() {
-        let mut unix_dir = UnixFs::default();
-        unix_dir.file_type = FileType::Directory;
+        let mut unix_dir = UnixFs {
+            file_type: FileType::Directory,
+            ..Default::default()
+        };
         for entry in fs::read_dir(&*dir_path)? {
             let entry = entry?;
             let file_type = entry.file_type()?;
             let file_path = entry.path();
             let abs_path = file_path.absolutize()?.to_path_buf();
-
-            let mut link = Link::default();
-            link.name = entry.file_name().to_str().unwrap_or("").to_string();
-            link.tsize = entry.metadata()?.len();
+            
+            let name = entry.file_name().to_str().unwrap_or("").to_string();
+            let tsize = entry.metadata()?.len();
+            let mut link = Link {
+                name,
+                tsize,
+                ..Default::default()
+            };
             if file_type.is_file() {
                 link.guess_type = FileType::File;
                 unix_dir.add_link(link);

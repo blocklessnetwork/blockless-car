@@ -16,39 +16,36 @@ impl Decoder<UnixFs> for Ipld {
         match self {
             ipld::Ipld::Map(ref m) => {
                 let mut unix_fs: UnixFs = if let Some(ipld::Ipld::Bytes(data)) = m.get("Data") {
-                    let mut reader = BytesReader::from_bytes(&data);
-                    Data::from_reader(&mut reader, &data)
+                    let mut reader = BytesReader::from_bytes(data);
+                    Data::from_reader(&mut reader, data)
                         .map(|d| d.into())
                         .map_err(|e| CarError::Parsing(e.to_string()))?
                 } else {
                     return Err(CarError::Parsing("ipld format error".into()));
                 };
                 if let Some(ipld::Ipld::List(links)) = m.get("Links") {
-                    links.iter().for_each(|l| match l {
-                        ipld::Ipld::Map(ref m) => {
-                            let cid = if let Some(ipld::Ipld::Link(cid)) = m.get("Hash") {
-                                cid.clone()
-                            } else {
-                                return;
-                            };
-                            let name = if let Some(ipld::Ipld::String(name)) = m.get("Name") {
-                                name.clone()
-                            } else {
-                                String::new()
-                            };
-                            let size = if let Some(ipld::Ipld::Integer(size)) = m.get("Tsize") {
-                                *size as u64
-                            } else {
-                                0
-                            };
-                            unix_fs.add_link(Link::new(cid, name, size));
-                        }
-                        _ => {}
+                    links.iter().for_each(|l| if let ipld::Ipld::Map(ref m) = l {
+                        let cid = if let Some(ipld::Ipld::Link(cid)) = m.get("Hash") {
+                            *cid
+                        } else {
+                            return;
+                        };
+                        let name = if let Some(ipld::Ipld::String(name)) = m.get("Name") {
+                            name.clone()
+                        } else {
+                            String::new()
+                        };
+                        let size = if let Some(ipld::Ipld::Integer(size)) = m.get("Tsize") {
+                            *size as u64
+                        } else {
+                            0
+                        };
+                        unix_fs.add_link(Link::new(cid, name, size));
                     });
                 }
                 Ok(unix_fs)
             }
-            _ => return Err(CarError::Parsing("Not unixfs format".into())),
+            _ => Err(CarError::Parsing("Not unixfs format".into())),
         }
     }
 }
@@ -89,14 +86,15 @@ impl Encoder<Ipld> for UnixFs {
         match self.file_type {
             FileType::Directory | FileType::File => {
                 let mut map = BTreeMap::new();
-                let mut data = Data::default();
-                data.Type = self.file_type.into();
-                data.fanout = self.fanout;
-                data.blocksizes = self.block_sizes.clone();
-                data.mode = self.mode;
-                data.filesize = self.file_size;
-                data.hashType = self.hash_type;
-                data.mtime = self.mtime().map(|s| s.clone().into());
+                let data = Data {
+                    mode: self.mode,
+                    fanout: self.fanout,
+                    hashType: self.hash_type,
+                    Type: self.file_type.into(),
+                    blocksizes: self.block_sizes.clone(),
+                    mtime: self.mtime().map(|s| s.clone().into()),
+                    ..Default::default()
+                };
                 let mut buf: Vec<u8> = Vec::new();
                 let mut bw = Writer::new(&mut buf);
                 data.write_message(&mut bw)

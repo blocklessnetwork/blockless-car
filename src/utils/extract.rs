@@ -40,14 +40,14 @@ struct IndexRelation {
 
 impl IndexRelation {
     fn full_path(rel: Option<&IndexRelation>, cache: &HashMap<Cid, UnixfsCache>) -> Option<PathBuf> {
-        let filename = rel.map(|r| cache.get(&r.parent_cid)
+        let filename = rel.and_then(|r| cache.get(&r.parent_cid)
             .map(|f| f.inner.links[r.index].name_ref())
-        ).flatten();
+        );
         let parent_path = rel
-            .map(|r| cache
+            .and_then(|r| cache
                 .get(&r.parent_cid)
                 .map(|p| &p.path)
-            ).flatten();
+            );
         parent_path.zip(filename).map(|(p, n)| {
             let path: PathBuf = p.into();
             path.join(n)
@@ -58,7 +58,7 @@ impl IndexRelation {
 enum Type {
     Directory,
     File,
-    FileLinks(UnixFs),
+    FileLinks(Box<UnixFs>),
 }
 
 
@@ -101,7 +101,7 @@ fn extract_ipld_inner(
             m @ Ipld::Map(_) => {
                 let unixfs: UnixFs = (cid, m).try_into()?;
                 match unixfs.file_type {
-                    FileType::File => Type::FileLinks(unixfs),
+                    FileType::File => Type::FileLinks(Box::new(unixfs)),
                     _=> {
                         for (idx, link) in unixfs.links().iter().enumerate() {
                             let rel = IndexRelation {
@@ -116,7 +116,7 @@ fn extract_ipld_inner(
                             .unwrap_or_else(|| cid.to_string().into());
                         unixfs_cache.insert(cid, UnixfsCache { 
                             inner: unixfs, 
-                            path: path,
+                            path,
                         });
                         Type::Directory
                     }
