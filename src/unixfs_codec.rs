@@ -16,8 +16,8 @@ impl Decoder<UnixFs> for Ipld {
         match self {
             ipld::Ipld::Map(ref m) => {
                 let mut unix_fs: UnixFs = if let Some(ipld::Ipld::Bytes(data)) = m.get("Data") {
-                    let mut reader = BytesReader::from_bytes(&data);
-                    Data::from_reader(&mut reader, &data)
+                    let mut reader = BytesReader::from_bytes(data);
+                    Data::from_reader(&mut reader, data)
                         .map(|d| d.into())
                         .map_err(|e| CarError::Parsing(e.to_string()))?
                 } else {
@@ -27,7 +27,7 @@ impl Decoder<UnixFs> for Ipld {
                     links.iter().for_each(|l| match l {
                         ipld::Ipld::Map(ref m) => {
                             let cid = if let Some(ipld::Ipld::Link(cid)) = m.get("Hash") {
-                                cid.clone()
+                                *cid
                             } else {
                                 return;
                             };
@@ -48,7 +48,7 @@ impl Decoder<UnixFs> for Ipld {
                 }
                 Ok(unix_fs)
             }
-            _ => return Err(CarError::Parsing("Not unixfs format".into())),
+            _ => Err(CarError::Parsing("Not unixfs format".into())),
         }
     }
 }
@@ -89,14 +89,15 @@ impl Encoder<Ipld> for UnixFs {
         match self.file_type {
             FileType::Directory | FileType::File => {
                 let mut map = BTreeMap::new();
-                let mut data = Data::default();
-                data.Type = self.file_type.into();
-                data.fanout = self.fanout;
-                data.blocksizes = self.block_sizes.clone();
-                data.mode = self.mode;
-                data.filesize = self.file_size;
-                data.hashType = self.hash_type;
-                data.mtime = self.mtime().map(|s| s.clone().into());
+                let data = Data {
+                    mode: self.mode,
+                    fanout: self.fanout,
+                    hashType: self.hash_type,
+                    Type: self.file_type.into(),
+                    blocksizes: self.block_sizes.clone(),
+                    mtime: self.mtime().map(|s| s.clone().into()),
+                    ..Default::default()
+                };
                 let mut buf: Vec<u8> = Vec::new();
                 let mut bw = Writer::new(&mut buf);
                 data.write_message(&mut bw)

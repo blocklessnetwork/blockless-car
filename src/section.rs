@@ -49,6 +49,7 @@ impl Section {
         self.pos
     }
 
+    #[allow(clippy::len_without_is_empty)]
     #[inline(always)]
     pub fn len(&self) -> usize {
         self.len

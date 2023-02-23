@@ -197,7 +197,7 @@ impl UnixFs {
 
     #[inline(always)]
     pub fn file_name(&self) -> Option<&str> {
-        self.file_name.as_ref().map(String::as_str)
+        self.file_name.as_deref()
     }
 
     #[inline(always)]
