@@ -65,7 +65,7 @@ where
             ));
         }
         self.header = header;
-        self.inner.seek(std::io::SeekFrom::Start(0));
+        self.inner.rewind();
         self.write_head()
     }
 }
