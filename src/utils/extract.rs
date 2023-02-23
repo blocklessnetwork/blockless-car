@@ -58,7 +58,7 @@ impl IndexRelation {
 enum Type {
     Directory,
     File,
-    FileLinks(UnixFs),
+    FileLinks(Box<UnixFs>),
 }
 
 
@@ -101,7 +101,7 @@ fn extract_ipld_inner(
             m @ Ipld::Map(_) => {
                 let unixfs: UnixFs = (cid, m).try_into()?;
                 match unixfs.file_type {
-                    FileType::File => Type::FileLinks(unixfs),
+                    FileType::File => Type::FileLinks(Box::new(unixfs)),
                     _=> {
                         for (idx, link) in unixfs.links().iter().enumerate() {
                             let rel = IndexRelation {

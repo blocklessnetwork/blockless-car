@@ -24,26 +24,23 @@ impl Decoder<UnixFs> for Ipld {
                     return Err(CarError::Parsing("ipld format error".into()));
                 };
                 if let Some(ipld::Ipld::List(links)) = m.get("Links") {
-                    links.iter().for_each(|l| match l {
-                        ipld::Ipld::Map(ref m) => {
-                            let cid = if let Some(ipld::Ipld::Link(cid)) = m.get("Hash") {
-                                *cid
-                            } else {
-                                return;
-                            };
-                            let name = if let Some(ipld::Ipld::String(name)) = m.get("Name") {
-                                name.clone()
-                            } else {
-                                String::new()
-                            };
-                            let size = if let Some(ipld::Ipld::Integer(size)) = m.get("Tsize") {
-                                *size as u64
-                            } else {
-                                0
-                            };
-                            unix_fs.add_link(Link::new(cid, name, size));
-                        }
-                        _ => {}
+                    links.iter().for_each(|l| if let ipld::Ipld::Map(ref m) = l {
+                        let cid = if let Some(ipld::Ipld::Link(cid)) = m.get("Hash") {
+                            *cid
+                        } else {
+                            return;
+                        };
+                        let name = if let Some(ipld::Ipld::String(name)) = m.get("Name") {
+                            name.clone()
+                        } else {
+                            String::new()
+                        };
+                        let size = if let Some(ipld::Ipld::Integer(size)) = m.get("Tsize") {
+                            *size as u64
+                        } else {
+                            0
+                        };
+                        unix_fs.add_link(Link::new(cid, name, size));
                     });
                 }
                 Ok(unix_fs)
