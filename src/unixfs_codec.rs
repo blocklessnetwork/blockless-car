@@ -90,6 +90,7 @@ impl Encoder<Ipld> for UnixFs {
                     mode: self.mode,
                     fanout: self.fanout,
                     hashType: self.hash_type,
+                    filesize: self.file_size,
                     Type: self.file_type.into(),
                     blocksizes: self.block_sizes.clone(),
                     mtime: self.mtime().map(|s| s.clone().into()),
