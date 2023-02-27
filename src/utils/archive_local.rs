@@ -39,8 +39,8 @@ where
     let root_path = src_path.absolutize().unwrap();
     let path = root_path.to_path_buf();
     // ensure sufficient file block size for head, after the root cid generated using the content, fill back the head.
-    let mut root_cid = Some(pb_cid(b""));
-    let header = CarHeader::V1(CarHeaderV1::new(vec![root_cid.unwrap()]));
+    let mut root_cid = Some(empty_pb_cid());
+    let header = CarHeader::new_v1(vec![root_cid.unwrap()]);
     let mut writer = CarWriterV1::new(to_carfile, header);
     walk_dir(
         path,
@@ -93,13 +93,18 @@ where
 }
 
 #[inline(always)]
-fn pb_cid(data: &[u8]) -> Cid {
+pub fn empty_pb_cid() -> Cid {
+    pb_cid(&[])
+}
+
+#[inline(always)]
+pub fn pb_cid(data: &[u8]) -> Cid {
     let h = Code::Blake2b256.digest(data);
     Cid::new_v1(DagPbCodec.into(), h)
 }
 
 #[inline(always)]
-fn raw_cid(data: &[u8]) -> Cid {
+pub fn raw_cid(data: &[u8]) -> Cid {
     let h = Code::Blake2b256.digest(data);
     Cid::new_v1(RawCodec.into(), h)
 }
