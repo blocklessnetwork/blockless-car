@@ -75,9 +75,8 @@ fn extract_ipld_inner(
     let mut relations: HashMap<Cid, IndexRelation> = Default::default();
     queue.push_back(cid);
     let root_path = match parent {
-        Some(ref p) => {
-            let cid_path: PathBuf = cid.to_string().into();
-            p.join(cid_path)
+        Some(p) => {
+            p
         },
         None => cid.to_string().into(),
     };
@@ -113,7 +112,7 @@ fn extract_ipld_inner(
                         }
                         let rel = relations.get(&cid);
                         let path = IndexRelation::full_path(rel, &unixfs_cache)
-                            .unwrap_or_else(|| cid.to_string().into());
+                            .unwrap_or_else(|| root_path.clone());
                         unixfs_cache.insert(cid, UnixfsCache { 
                             inner: unixfs, 
                             path,
@@ -131,7 +130,7 @@ fn extract_ipld_inner(
                     .create(true)
                     .write(true)
                     .open(&full_path)
-                    .unwrap();  
+                    .unwrap();
                 for ufs in f.links() {
                     let file_ipld: Ipld = reader.ipld(&ufs.hash).unwrap();
                     match file_ipld {
@@ -142,7 +141,9 @@ fn extract_ipld_inner(
                     }
                 }
             }
-            Type::Directory => fs::create_dir(&full_path)?,
+            Type::Directory => if !full_path.exists() {
+                fs::create_dir(&full_path)?
+            },
             _ => {},
         }
     }
