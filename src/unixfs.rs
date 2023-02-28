@@ -90,24 +90,24 @@ impl From<UnixTime> for pb::unixfs::UnixTime {
 
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct UnixFs {
-    pub(crate) cid: Option<Cid>,
-    pub(crate) mode: Option<u32>,
-    pub(crate) file_type: FileType,
-    pub(crate) fanout: Option<u64>,
-    pub(crate) block_sizes: Vec<u64>,
-    pub(crate) file_size: Option<u64>,
-    pub(crate) hash_type: Option<u64>,
-    pub(crate) links: Vec<Link>,
-    pub(crate) mtime: Option<UnixTime>,
-    pub(crate) file_name: Option<String>,
+    pub cid: Option<Cid>,
+    pub mode: Option<u32>,
+    pub file_type: FileType,
+    pub fanout: Option<u64>,
+    pub block_sizes: Vec<u64>,
+    pub file_size: Option<u64>,
+    pub hash_type: Option<u64>,
+    pub links: Vec<Link>,
+    pub mtime: Option<UnixTime>,
+    pub file_name: Option<String>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct Link {
-    pub(crate) hash: Cid,
-    pub(crate) guess_type: FileType,
-    pub(crate) name: String,
-    pub(crate) tsize: u64,
+    pub hash: Cid,
+    pub guess_type: FileType,
+    pub name: String,
+    pub tsize: u64,
 }
 
 impl Link {
@@ -164,6 +164,13 @@ impl UnixFs {
     pub fn new(cid: Cid) -> Self {
         Self {
             cid: Some(cid),
+            ..Default::default()
+        }
+    }
+
+    pub fn new_directory() -> Self {
+        Self {
+            file_type: FileType::Directory,
             ..Default::default()
         }
     }

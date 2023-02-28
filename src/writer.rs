@@ -1,6 +1,7 @@
 use cid::Cid;
+use ipld::{pb::DagPbCodec, prelude::Codec};
 
-use crate::{error::CarError, CarHeader, utils::empty_pb_cid};
+use crate::{error::CarError, Ipld, CarHeader, utils::{empty_pb_cid, pb_cid}};
 
 mod writer_v1;
 pub(crate) use writer_v1::CarWriterV1;
@@ -9,6 +10,25 @@ pub trait CarWriter {
     fn write<T>(&mut self, cid: Cid, data: T) -> Result<(), CarError>
     where
         T: AsRef<[u8]>;
+
+    fn write_ipld(&mut self, ipld: Ipld) -> Result<Cid, CarError> {
+        match ipld {
+            Ipld::Bytes(buf) => {
+                let file_cid = crate::utils::raw_cid(&buf);
+                self.write(file_cid, &buf)?;
+                Ok(file_cid)
+            },
+            fs_ipld @ ipld::Ipld::Map(_) => {
+                let bs: Vec<u8> = DagPbCodec
+                    .encode(&fs_ipld)
+                    .map_err(|e| CarError::Parsing(e.to_string()))?;
+                let cid = pb_cid(&bs);
+                self.write(cid, &bs)?;
+                Ok(cid)
+            },
+            _ => Err(CarError::Parsing("Not support write ipld.".to_lowercase()))
+        }
+    }
 
     fn rewrite_header(&mut self, header: CarHeader) -> Result<(), CarError>;
 
