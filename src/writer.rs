@@ -6,11 +6,21 @@ use crate::{error::CarError, Ipld, CarHeader, utils::{empty_pb_cid, pb_cid}};
 mod writer_v1;
 pub(crate) use writer_v1::CarWriterV1;
 
+pub enum WriteStream<'bs> {
+    Bytes(&'bs [u8]),
+    End
+}
+
 pub trait CarWriter {
     fn write<T>(&mut self, cid: Cid, data: T) -> Result<(), CarError>
     where
         T: AsRef<[u8]>;
 
+    fn write_stream<F, R>(&mut self, cid_f: F, stream_len: usize, r: &mut R) -> Result<Cid, CarError>
+    where
+        R: std::io::Read,
+        F: FnMut(WriteStream) -> Option<Result<Cid, CarError>>;
+    
     fn write_ipld(&mut self, ipld: Ipld) -> Result<Cid, CarError> {
         match ipld {
             Ipld::Bytes(buf) => {
