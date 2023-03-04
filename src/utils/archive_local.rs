@@ -61,7 +61,6 @@ where
                         //TODO: split file when file size is bigger than the max section size.
                         let filepath = abs_path.join(link.name_ref());
                         let mut file = fs::OpenOptions::new().read(true).open(filepath)?;
-                        let fmeta = file.metadata()?;
                         let mut hash_codec = Blake2b256::default();
                         let cid_gen = |w: WriteStream| {
                             match w {
@@ -79,7 +78,7 @@ where
                                 },
                             }
                         };
-                        let file_cid = writer.write_stream(cid_gen, fmeta.len() as usize, &mut file)?;
+                        let file_cid = writer.write_stream(cid_gen, link.tsize as usize, &mut file)?;
                         link.hash = file_cid;
                     }
                     _ => unreachable!("not support!"),
