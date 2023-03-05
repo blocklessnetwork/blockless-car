@@ -20,7 +20,7 @@ pub trait CarWriter {
     where
         R: std::io::Read,
         F: FnMut(WriteStream) -> Option<Result<Cid, CarError>>;
-    
+
     fn write_ipld(&mut self, ipld: Ipld) -> Result<Cid, CarError> {
         match ipld {
             Ipld::Bytes(buf) => {
