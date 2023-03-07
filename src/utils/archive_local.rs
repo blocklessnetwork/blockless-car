@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, VecDeque},
     fs,
-    io::{self, Read},
+    io,
     path::{Path, PathBuf},
     rc::Rc,
 };
@@ -10,16 +10,24 @@ use crate::{
     codec::Encoder,
     error::CarError,
     header::CarHeaderV1,
-    unixfs::{FileType, UnixFs, Link},
-    writer::{CarWriter, CarWriterV1},
+    unixfs::{FileType, Link, UnixFs},
+    writer::{CarWriter, CarWriterV1, WriteStream},
     CarHeader, Ipld,
 };
 use cid::{
-    multihash::{Code, MultihashDigest},
+    multihash::{
+        Code, 
+        MultihashDigest, 
+        Hasher,
+        Multihash,
+        Blake2b256,
+    },
     Cid,
 };
 use ipld::{pb::DagPbCodec, prelude::Codec, raw::RawCodec};
 use path_absolutize::*;
+
+use super::BLAKE2B256_CODEC;
 
 type WalkPath = (Rc<PathBuf>, Option<usize>);
 
@@ -53,11 +61,24 @@ where
                         //TODO: split file when file size is bigger than the max section size.
                         let filepath = abs_path.join(link.name_ref());
                         let mut file = fs::OpenOptions::new().read(true).open(filepath)?;
-
-                        let mut buf = Vec::<u8>::new();
-                        file.read_to_end(&mut buf)?;
-                        let file_cid = raw_cid(&buf);
-                        writer.write(file_cid, &buf)?;
+                        let mut hash_codec = Blake2b256::default();
+                        let cid_gen = |w: WriteStream| {
+                            match w {
+                                WriteStream::Bytes(bs) => {
+                                    hash_codec.update(bs);
+                                    None
+                                },
+                                WriteStream::End => {
+                                    let bs = hash_codec.finalize();
+                                    let h = match Multihash::wrap(BLAKE2B256_CODEC, bs) {
+                                        Ok(h) => h,
+                                        Err(e) => return Some(Err(CarError::Parsing(e.to_string()))),
+                                    };
+                                    Some(Ok(Cid::new_v1(RawCodec.into(), h)))
+                                },
+                            }
+                        };
+                        let file_cid = writer.write_stream(cid_gen, link.tsize as usize, &mut file)?;
                         link.hash = file_cid;
                     }
                     _ => unreachable!("not support!"),
@@ -90,6 +111,23 @@ where
     let root_cid = root_cid.ok_or(CarError::NotFound("root cid not found.".to_string()))?;
     let header = CarHeader::V1(CarHeaderV1::new(vec![root_cid]));
     writer.rewrite_header(header)
+}
+
+pub fn pipe_raw_cid<R, W>(r: &mut R, w: &mut W) -> Result<Cid, CarError> 
+where
+    R: std::io::Read,
+    W: std::io::Write,
+{
+    let mut hash_codec = cid::multihash::Blake2b256::default();
+    let mut bs = [0u8; 1024];
+    while let Ok(n) = r.read(&mut bs) {
+        hash_codec.update(&bs[0..n]);
+        w.write_all(&bs[0..n])?;
+    }
+    let bs = hash_codec.finalize();
+    let h = cid::multihash::Multihash::wrap(BLAKE2B256_CODEC, bs);
+    let h = h.map_err(|e| CarError::Parsing(e.to_string()))?;
+    Ok(Cid::new_v1(DagPbCodec.into(), h))
 }
 
 #[inline(always)]
@@ -127,7 +165,7 @@ fn walk_inner(
             let file_type = entry.file_type()?;
             let file_path = entry.path();
             let abs_path = file_path.absolutize()?.to_path_buf();
-            
+
             let name = entry.file_name().to_str().unwrap_or("").to_string();
             let tsize = entry.metadata()?.len();
             let mut link = Link {

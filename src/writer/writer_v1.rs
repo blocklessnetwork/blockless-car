@@ -1,6 +1,9 @@
 #![allow(unused)]
-use super::CarWriter;
-use crate::{error::CarError, header::CarHeader};
+use std::io::SeekFrom;
+
+use super::{CarWriter, WriteStream};
+use crate::{error::CarError, header::CarHeader, utils::empty_pb_cid};
+use cid::Cid;
 use integer_encoding::VarIntWriter;
 
 pub(crate) struct CarWriterV1<W> {
@@ -67,6 +70,52 @@ where
         self.header = header;
         self.inner.rewind();
         self.write_head()
+    }
+
+    fn write_stream<F, R>(&mut self, mut cid_f: F, stream_len: usize, r: &mut R) -> Result<Cid, CarError>
+    where
+        R: std::io::Read,
+        F: FnMut(WriteStream) -> Option<Result<Cid, CarError>> 
+    {
+        if !self.is_header_written {
+            self.write_head()?;
+        }
+        let cid = empty_pb_cid();
+        let mut cid_buff: Vec<u8> = Vec::new();
+        cid.write_bytes(&mut cid_buff)
+            .map_err(|e| CarError::Parsing(e.to_string()))?;
+        let sec_len = stream_len + cid_buff.len();
+        self.inner.write_varint(sec_len)?;
+        let cid_pos = self.inner.stream_position()?;
+        self.inner.write_all(&cid_buff[..])?;
+        let mut buf = vec![0u8; 10240];
+        let mut total = 0;
+        while let Ok(n) = r.read(&mut buf) {
+            if n == 0 {
+                break;
+            }
+            total += n;
+            let bs = &buf[0..n];
+            self.inner.write_all(bs)?;
+            if let Some(Err(e)) = cid_f(WriteStream::Bytes(bs)) {
+                return Err(e);
+            }
+        }
+        
+        //write really cid
+        let cid = match cid_f(WriteStream::End) {
+            Some(Ok(cid)) => cid,
+            Some(Err(e)) => return Err(e),
+            None => unimplemented!("should not be reach."),
+        };
+
+        self.inner.seek(SeekFrom::Start(cid_pos))?;
+        let mut cid_buff: Vec<u8> = Vec::new();
+        cid.write_bytes(&mut cid_buff)
+            .map_err(|e| CarError::Parsing(e.to_string()))?;
+        self.inner.write_all(&cid_buff[..])?;
+        self.inner.seek(SeekFrom::Current(stream_len as _))?;
+        Ok(cid)
     }
 }
 
