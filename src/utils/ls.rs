@@ -17,20 +17,17 @@ fn walk(vecq: &mut VecDeque<Cid>, reader: &mut impl CarReader) {
             continue;
         }
         let file_ipld: Ipld = reader.ipld(&file_cid).unwrap();
-        match file_ipld {
-            m @ Ipld::Map(_) => {
-                let unixfs: UnixFs = m.try_into().unwrap();
-                match unixfs.file_type() {
-                    FileType::Directory => {},
-                    _=> continue,
-                }
-                for n in unixfs.links().into_iter() {
-                    let cid = n.hash();
-                    cache.insert(cid, file_n.clone() + "/" + n.name_ref());
-                    vecq.push_back(cid);
-                }
+        if let m @  Ipld::Map(_) = file_ipld {
+            let unixfs: UnixFs = m.try_into().unwrap();
+            match unixfs.file_type() {
+                FileType::Directory => {},
+                _=> continue,
             }
-            _ => {}
+            for n in unixfs.links().into_iter() {
+                let cid = n.hash();
+                cache.insert(cid, file_n.clone() + "/" + n.name_ref());
+                vecq.push_back(cid);
+            }
         }
     }
 }
