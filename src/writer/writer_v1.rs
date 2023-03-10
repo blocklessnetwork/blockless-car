@@ -89,19 +89,16 @@ where
         let cid_pos = self.inner.stream_position()?;
         self.inner.write_all(&cid_buff[..])?;
         let mut buf = vec![0u8; 10240];
-        let mut total = 0;
-        while let Ok(n) = r.read(&mut buf) {
+        while let Ok(n) = r.read(&mut buf[0..]) {
             if n == 0 {
                 break;
             }
-            total += n;
             let bs = &buf[0..n];
             self.inner.write_all(bs)?;
             if let Some(Err(e)) = cid_f(WriteStream::Bytes(bs)) {
                 return Err(e);
             }
         }
-        
         //write really cid
         let cid = match cid_f(WriteStream::End) {
             Some(Ok(cid)) => cid,
