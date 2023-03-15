@@ -1,6 +1,6 @@
 use std::{
     collections::VecDeque,
-    io::{self, Write},
+    io::{self, Write}, str::FromStr,
 };
 
 use cid::Cid;
@@ -47,6 +47,12 @@ fn ipld_write_inner(
         };
     }
     Ok(())
+}
+
+#[inline(always)]
+pub fn cat_ipld_str(reader: &mut impl CarReader, cid: &str) -> Result<(), CarError> {
+    let cid = Cid::from_str(cid).map_err(|e| CarError::Parsing(e.to_string()))?;
+    cat_ipld(reader, cid)
 }
 
 pub fn cat_ipld(reader: &mut impl CarReader, file_cid: Cid) -> Result<(), CarError> {
