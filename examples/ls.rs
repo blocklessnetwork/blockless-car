@@ -10,5 +10,5 @@ fn main() {
     });
     let file = std::fs::File::open(path).unwrap();
     let mut reader = reader::new_v1(file).unwrap();
-    rust_car::utils::list(&mut reader);
+    rust_car::utils::list(&mut reader).unwrap();
 }
