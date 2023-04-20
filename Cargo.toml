@@ -1,11 +1,11 @@
 [package]
-name = "rust-car"
+name = "blockless-car"
 version = "0.1.4"
 edition = "2021"
 authors = ["Join.Gong<joinhack@gmail.com>", "Derek Anderson<derek@txlabs.org>"]
 description = "This crate is the ipfs car file reader writer and utils."
 license = "MIT/Apache-2.0"
-repository = "https://github.com/blocklessnetwork/rust-car"
+repository = "https://github.com/blocklessnetwork/blockless-car"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
