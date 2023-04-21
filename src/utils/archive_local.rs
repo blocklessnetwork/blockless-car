@@ -1,9 +1,9 @@
 use std::{
     collections::{HashMap, VecDeque},
-    fs,
-    io,
+    fs::{self, File},
+    io::{self, Read},
     path::{Path, PathBuf},
-    rc::Rc,
+    rc::Rc
 };
 
 use crate::{
@@ -33,6 +33,61 @@ type WalkPath = (Rc<PathBuf>, Option<usize>);
 
 type WalkPathCache = HashMap<Rc<PathBuf>, UnixFs>;
 
+const MAX_SECTION_SIZE: usize = 8<<20;
+
+struct LimitedFile<'a> {
+    inner: &'a mut File,
+    readn: usize,
+    limited: usize,
+}
+
+impl<'a> LimitedFile<'a> {
+    fn new(inner: &'a mut File, limited: usize) -> Self {
+        Self {
+            inner,
+            limited,
+            readn: 0,
+        }
+    }
+}
+
+impl<'a> Read for LimitedFile<'a> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        if self.readn == self.limited {
+            return Ok(0);
+        }
+        let buf = if self.readn + buf.len() > self.limited {
+            &mut buf[..(self.limited - self.readn)]
+        } else {
+            buf
+        };
+        self.inner.read(buf).map(|n| {
+            self.readn += n;
+            n
+        })
+    }
+}
+
+fn cid_gen() -> impl FnMut(WriteStream) -> Option<Result<Cid, CarError>> {
+    let mut hash_codec = Blake2b256::default();
+    return move |w: WriteStream| {
+        match w {
+            WriteStream::Bytes(bs) => {
+                hash_codec.update(bs);
+                None
+            },
+            WriteStream::End => {
+                let bs = hash_codec.finalize();
+                let h = match Multihash::wrap(BLAKE2B256_CODEC, bs) {
+                    Ok(h) => h,
+                    Err(e) => return Some(Err(CarError::Parsing(e.to_string()))),
+                };
+                Some(Ok(Cid::new_v1(RawCodec.into(), h)))
+            },
+        }
+    };
+}
+
 /// archive the directory to the target CAR format file
 /// `path` is the directory archived in to the CAR file.
 /// `to_carfile` is the target file.
@@ -58,28 +113,40 @@ where
                 match link.guess_type {
                     FileType::Directory => {}
                     FileType::File => {
-                        //TODO: split file when file size is bigger than the max section size.
                         let filepath = abs_path.join(link.name_ref());
                         let mut file = fs::OpenOptions::new().read(true).open(filepath)?;
-                        let mut hash_codec = Blake2b256::default();
-                        let cid_gen = |w: WriteStream| {
-                            match w {
-                                WriteStream::Bytes(bs) => {
-                                    hash_codec.update(bs);
-                                    None
-                                },
-                                WriteStream::End => {
-                                    let bs = hash_codec.finalize();
-                                    let h = match Multihash::wrap(BLAKE2B256_CODEC, bs) {
-                                        Ok(h) => h,
-                                        Err(e) => return Some(Err(CarError::Parsing(e.to_string()))),
-                                    };
-                                    Some(Ok(Cid::new_v1(RawCodec.into(), h)))
-                                },
-                            }
-                        };
-                        let file_cid = writer.write_stream(cid_gen, link.tsize as usize, &mut file)?;
-                        link.hash = file_cid;
+                        let file_size = link.tsize as usize;
+                        if file_size < MAX_SECTION_SIZE {
+                            let file_cid = writer.write_stream(cid_gen(), file_size, &mut file)?;
+                            link.hash = file_cid;
+                        } else {
+                            //split file when file size is bigger than the max section size.
+                            let file_secs = (file_size / MAX_SECTION_SIZE) + 1;
+                            //split the big file into small file and calc the cids.
+                            let links = (0..file_secs).map(|i| {
+                                let mut limit_file = LimitedFile::new(&mut file, MAX_SECTION_SIZE);
+                                let size = if i < file_secs - 1 {
+                                    MAX_SECTION_SIZE
+                                } else  {
+                                    file_size % MAX_SECTION_SIZE
+                                };
+                                let cid = writer.write_stream(cid_gen(), size, &mut limit_file);
+                                cid.map(|cid| Link::new(cid, String::new(), size as _))
+                            }).collect::<Result<Vec<Link>, CarError>>()?;
+                            let unix_fs = UnixFs {
+                                links,
+                                file_type: FileType::File,
+                                file_size: Some(file_size as u64),
+                                ..Default::default()
+                            };
+                            let file_ipld = unix_fs.encode()?;
+                            let bs = DagPbCodec
+                                .encode(&file_ipld)
+                                .map_err(|e| CarError::Parsing(e.to_string()))?;
+                            let cid = pb_cid(&bs);
+                            writer.write(cid, bs)?;
+                            link.hash = cid;
+                        }
                     }
                     _ => unreachable!("not support!"),
                 }
@@ -89,7 +156,6 @@ where
                 .encode(&fs_ipld)
                 .map_err(|e| CarError::Parsing(e.to_string()))?;
             let cid = pb_cid(&bs);
-
             if root_path.as_ref() == abs_path.as_ref() {
                 root_cid = Some(cid);
             }
