@@ -1,5 +1,5 @@
 use cid::Cid;
-use rust_car::{
+use blockless_car::{
     error::CarError,
     reader::{self, CarReader},
     unixfs::UnixFs,
