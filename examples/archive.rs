@@ -1,4 +1,4 @@
-use rust_car::utils::archive_local;
+use blockless_car::utils::archive_local;
 
 /// Cat the file in car file by file id
 /// e.g. ```cargo run --example `archive directory` `target car file`.```
