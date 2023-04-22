@@ -7,8 +7,9 @@ use crate::pb::{
     unixfs::{mod_Data::DataType, Data},
 };
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
 pub enum FileType {
+    #[default]
     Raw = 0,
     Directory = 1,
     File = 2,
@@ -28,12 +29,6 @@ impl Display for FileType {
             FileType::HAMTShard => "hasmtshard",
         };
         write!(f, "{file_type}")
-    }
-}
-
-impl Default for FileType {
-    fn default() -> Self {
-        FileType::Raw
     }
 }
 

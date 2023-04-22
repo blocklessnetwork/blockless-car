@@ -1,6 +1,6 @@
 [package]
 name = "blockless-car"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
 authors = ["Join.Gong<joinhack@gmail.com>", "Derek Anderson<derek@txlabs.org>"]
 description = "This crate is the ipfs car file reader writer and utils."
